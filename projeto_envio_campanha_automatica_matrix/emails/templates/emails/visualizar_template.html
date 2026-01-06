@@ -1,0 +1,821 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ template.nome }} - Visualizador{% endblock %}
+
+{% block page_title %}📧 {{ template.nome }}{% endblock %}
+{% block page_subtitle %}Visualizador interativo de template de email{% endblock %}
+
+{% block navbar_actions %}
+<a href="/admin/emails/templateemail/{{ template.id }}/change/" target="_blank" class="action-button">
+    <i data-feather="edit" style="width: 14px; height: 14px;"></i>
+    Editar Template
+</a>
+<a href="{% url 'emails:listar_templates' %}" class="action-button success">
+    <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+    Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Visualizador Principal -->
+<div class="grid-modern grid-3 fade-in" style="grid-template-columns: 1fr 2fr;">
+    
+    <!-- Painel de Controle -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="settings" style="width: 18px; height: 18px;"></i>
+                Controles do Preview
+            </div>
+        </div>
+        <div class="modern-card-body">
+            
+            <!-- Informações Básicas -->
+            <div style="margin-bottom: var(--space-lg);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md);">
+                    <span class="status-badge-modern status-concluida-modern">{{ template.get_tipo_display }}</span>
+                    {% if template.ativo %}
+                    <span style="color: var(--accent-success); font-size: var(--font-size-sm);">
+                        <i data-feather="check-circle" style="width: 12px; height: 12px;"></i> Ativo
+                    </span>
+                    {% else %}
+                    <span style="color: var(--text-tertiary); font-size: var(--font-size-sm);">
+                        <i data-feather="pause-circle" style="width: 12px; height: 12px;"></i> Inativo
+                    </span>
+                    {% endif %}
+                </div>
+                
+                {% if template.descricao %}
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-md);">
+                    {{ template.descricao }}
+                </div>
+                {% endif %}
+                
+                <!-- Estatísticas Compactas -->
+                {% if template.total_enviados > 0 %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); margin-bottom: var(--space-md);">
+                    <div style="text-align: center; padding: var(--space-sm); background: var(--bg-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">
+                        <div style="font-weight: var(--font-weight-bold); color: var(--text-primary);">{{ template.total_enviados }}</div>
+                        <div style="color: var(--text-tertiary);">Enviados</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-sm); background: var(--bg-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">
+                        <div style="font-weight: var(--font-weight-bold); color: {% if template.get_taxa_sucesso >= 90 %}var(--accent-success){% elif template.get_taxa_sucesso >= 70 %}var(--accent-warning){% else %}var(--accent-danger){% endif %};">{{ template.get_taxa_sucesso|floatformat:1 }}%</div>
+                        <div style="color: var(--text-tertiary);">Sucesso</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Seletor de Dados -->
+            <div style="margin-bottom: var(--space-lg);">
+                <label style="display: block; margin-bottom: var(--space-sm); font-weight: var(--font-weight-medium); color: var(--text-primary);">
+                    <i data-feather="database" style="width: 14px; height: 14px;"></i>
+                    Dados para Preview:
+                </label>
+                <select id="dados-exemplo" onchange="atualizarPreview()" style="width: 100%; padding: var(--space-sm); border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--bg-primary);">
+                    <option value="exemplo">📋 Dados de Exemplo</option>
+                    <option value="cliente-real">👤 Cliente Real (se disponível)</option>
+                    <option value="personalizado">✏️ Dados Personalizados</option>
+                </select>
+            </div>
+
+            <!-- Editor de Variáveis -->
+            <div id="editor-variaveis" style="margin-bottom: var(--space-lg);">
+                <label style="display: block; margin-bottom: var(--space-sm); font-weight: var(--font-weight-medium); color: var(--text-primary);">
+                    <i data-feather="edit-3" style="width: 14px; height: 14px;"></i>
+                    Variáveis do Template:
+                </label>
+                
+                {% if variaveis_detectadas %}
+                <div id="variaveis-form" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                    {% for variavel in variaveis_detectadas %}
+                    <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
+                        <label style="font-size: var(--font-size-sm); color: var(--text-secondary); font-family: var(--font-family-mono);">{{ variavel }}</label>
+                        <input type="text" 
+                               id="var-{{ variavel }}" 
+                               data-variavel="{{ variavel }}"
+                               onchange="atualizarPreview()"
+                               placeholder="Digite o valor para {{ variavel }}"
+                               style="padding: var(--space-xs) var(--space-sm); border: 1px solid var(--border-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); background: var(--bg-primary);">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="text-align: center; color: var(--text-tertiary); padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <i data-feather="info" style="width: 16px; height: 16px; margin-bottom: var(--space-xs);"></i>
+                    <div>Nenhuma variável detectada</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Controles de Visualização -->
+            <div style="margin-bottom: var(--space-lg);">
+                <label style="display: block; margin-bottom: var(--space-sm); font-weight: var(--font-weight-medium); color: var(--text-primary);">
+                    <i data-feather="eye" style="width: 14px; height: 14px;"></i>
+                    Modo de Visualização:
+                </label>
+                <div style="display: flex; gap: var(--space-xs);">
+                    <button onclick="mostrarPreview()" id="btn-preview" class="btn-modern btn-modern-primary" style="font-size: var(--font-size-sm); flex: 1;">
+                        📧 Email
+                    </button>
+                    <button onclick="mostrarCodigo()" id="btn-codigo" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-sm); flex: 1;">
+                        📝 Código
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                <button onclick="enviarEmailTeste()" class="btn-modern btn-modern-success" style="font-size: var(--font-size-sm);">
+                    <i data-feather="send" style="width: 14px; height: 14px;"></i>
+                    Enviar Email de Teste
+                </button>
+                <button onclick="exportarTemplate()" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-sm);">
+                    <i data-feather="download" style="width: 14px; height: 14px;"></i>
+                    Exportar Template
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área de Preview -->
+    <div class="modern-card" style="min-height: 600px;">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="mail" style="width: 18px; height: 18px;"></i>
+                Preview do Email
+            </div>
+            <div style="display: flex; gap: var(--space-xs); align-items: center;">
+                <span id="status-preview" style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Carregando...</span>
+                <button onclick="atualizarPreview()" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-sm); padding: var(--space-xs) var(--space-sm);">
+                    <i data-feather="refresh-cw" style="width: 12px; height: 12px;"></i>
+                </button>
+            </div>
+        </div>
+        <div class="modern-card-body" style="padding: 0;">
+            
+            <!-- Preview do Email -->
+            <div id="area-preview">
+                <!-- Cabeçalho do Email -->
+                <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-secondary); background: var(--bg-secondary);">
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                        <i data-feather="user" style="width: 16px; height: 16px; color: var(--text-tertiary);"></i>
+                        <span style="font-size: var(--font-size-sm); color: var(--text-secondary);">De: Sistema de Campanhas &lt;noreply@sistema.com&gt;</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                        <i data-feather="mail" style="width: 16px; height: 16px; color: var(--text-tertiary);"></i>
+                        <span style="font-size: var(--font-size-sm); color: var(--text-secondary);">Para: cliente@exemplo.com</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                        <i data-feather="tag" style="width: 16px; height: 16px; color: var(--text-tertiary);"></i>
+                        <span id="assunto-preview" style="font-weight: var(--font-weight-medium); color: var(--text-primary);">{{ template_renderizado.assunto }}</span>
+                    </div>
+                </div>
+
+                <!-- Corpo do Email -->
+                <div id="corpo-preview" style="background: white; min-height: 400px;">
+                    <iframe id="iframe-email" 
+                            srcdoc="{{ template_renderizado.corpo_html|escapejs }}"
+                            style="width: 100%; height: 500px; border: none; display: block;"
+                            onload="ajustarAlturaIframe()">
+                    </iframe>
+                </div>
+            </div>
+
+            <!-- Área de Código -->
+            <div id="area-codigo" style="display: none; height: 500px; overflow-y: auto;">
+                <div style="display: flex; border-bottom: 1px solid var(--border-secondary);">
+                    <button onclick="mostrarCodigoHTML()" id="btn-html-code" class="btn-modern btn-modern-primary" style="border-radius: 0; border: none; font-size: var(--font-size-sm);">HTML</button>
+                    <button onclick="mostrarCodigoTexto()" id="btn-texto-code" class="btn-modern btn-modern-outline" style="border-radius: 0; border: none; font-size: var(--font-size-sm);">Texto</button>
+                </div>
+                <div id="codigo-html" style="height: 450px; overflow-y: auto;">
+                    <pre id="pre-html" style="margin: 0; padding: var(--space-md); font-family: var(--font-family-mono); font-size: var(--font-size-sm); line-height: 1.4; background: var(--bg-primary); color: var(--text-primary);">{{ template_renderizado.corpo_html }}</pre>
+                </div>
+                <div id="codigo-texto" style="display: none; height: 450px; overflow-y: auto;">
+                    {% if template_renderizado.corpo_texto %}
+                    <pre id="pre-texto" style="margin: 0; padding: var(--space-md); font-family: var(--font-family-mono); font-size: var(--font-size-sm); line-height: 1.4; background: var(--bg-primary); color: var(--text-primary);">{{ template_renderizado.corpo_texto }}</pre>
+                    {% else %}
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-tertiary);">
+                        <div style="text-align: center;">
+                            <i data-feather="alert-triangle" style="width: 32px; height: 32px; margin-bottom: var(--space-sm);"></i>
+                            <div>Nenhum conteúdo em texto puro definido</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Guia de Variáveis -->
+{% if variaveis_detectadas %}
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="help-circle" style="width: 18px; height: 18px;"></i>
+            Guia de Variáveis
+        </div>
+        <button onclick="toggleGuiaVariaveis()" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-sm);">
+            <span id="toggle-guia-text">Mostrar Guia</span>
+            <i data-feather="chevron-down" id="toggle-guia-icon" style="width: 14px; height: 14px;"></i>
+        </button>
+    </div>
+    <div id="guia-variaveis" class="modern-card-body" style="display: none;">
+        <div style="margin-bottom: var(--space-lg);">
+            <h4 style="margin-bottom: var(--space-sm); color: var(--text-primary);">Como usar variáveis:</h4>
+            <div style="background: var(--bg-secondary); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
+                <code style="font-family: var(--font-family-mono); color: var(--accent-primary);">
+                    Olá {% templatetag openvariable %} nome_cliente {% templatetag closevariable %}, sua fatura de R$ {% templatetag openvariable %} valor_fatura {% templatetag closevariable %} vence em {% templatetag openvariable %} vencimento_fatura {% templatetag closevariable %}.
+                </code>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-md);">
+            {% for variavel in variaveis_detectadas %}
+            <div style="padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md); border-left: 4px solid var(--accent-primary);">
+                <div style="font-family: var(--font-family-mono); font-weight: var(--font-weight-bold); color: var(--accent-primary); margin-bottom: var(--space-xs);">
+                    {% templatetag openvariable %} {{ variavel }} {% templatetag closevariable %}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    {% if variavel == 'nome_cliente' %}Nome completo do cliente
+                    {% elif variavel == 'codigo_cliente' %}Código único do cliente
+                    {% elif variavel == 'valor_fatura' %}Valor da fatura
+                    {% elif variavel == 'vencimento_fatura' %}Data de vencimento
+                    {% elif variavel == 'telefone' %}Telefone do cliente
+                    {% elif variavel == 'email' %}Email do cliente
+                    {% elif variavel == 'empresa' %}Nome da empresa
+                    {% else %}Variável personalizada{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Estado global do visualizador
+var templateAtual = {
+    id: {{ template.id }},
+    assunto: "",
+    corpo_html: "",
+    corpo_texto: ""
+};
+
+// Atribuição segura dos valores
+templateAtual.assunto = "{{ template.assunto|escapejs }}";
+templateAtual.corpo_html = "{{ template.corpo_html|escapejs }}";
+templateAtual.corpo_texto = "{{ template.corpo_texto|escapejs }}";
+
+var dadosAtivos = {{ dados_exemplo|safe }};
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    carregarDadosExemplo();
+    atualizarPreview();
+    feather.replace();
+    
+    // Status inicial
+    document.getElementById('status-preview').textContent = 'Pronto';
+});
+
+// === FUNÇÕES DE CONTROLE DE VISUALIZAÇÃO ===
+
+function mostrarPreview() {
+    document.getElementById('area-preview').style.display = 'block';
+    document.getElementById('area-codigo').style.display = 'none';
+    
+    document.getElementById('btn-preview').className = 'btn-modern btn-modern-primary';
+    document.getElementById('btn-codigo').className = 'btn-modern btn-modern-outline';
+}
+
+function mostrarCodigo() {
+    document.getElementById('area-preview').style.display = 'none';
+    document.getElementById('area-codigo').style.display = 'block';
+    
+    document.getElementById('btn-preview').className = 'btn-modern btn-modern-outline';
+    document.getElementById('btn-codigo').className = 'btn-modern btn-modern-primary';
+}
+
+function mostrarCodigoHTML() {
+    document.getElementById('codigo-html').style.display = 'block';
+    document.getElementById('codigo-texto').style.display = 'none';
+    
+    document.getElementById('btn-html-code').className = 'btn-modern btn-modern-primary';
+    document.getElementById('btn-texto-code').className = 'btn-modern btn-modern-outline';
+}
+
+function mostrarCodigoTexto() {
+    document.getElementById('codigo-html').style.display = 'none';
+    document.getElementById('codigo-texto').style.display = 'block';
+    
+    document.getElementById('btn-html-code').className = 'btn-modern btn-modern-outline';
+    document.getElementById('btn-texto-code').className = 'btn-modern btn-modern-primary';
+}
+
+// === FUNÇÕES DE MANIPULAÇÃO DE DADOS ===
+
+function carregarDadosExemplo() {
+    var tipoSelecionado = document.getElementById('dados-exemplo').value;
+    
+    if (tipoSelecionado === 'exemplo') {
+        dadosAtivos = {{ dados_exemplo|safe }};
+        preencherFormularioVariaveis(dadosAtivos);
+    } else if (tipoSelecionado === 'cliente-real') {
+        // Buscar dados de cliente real via AJAX
+        buscarClienteReal();
+    } else if (tipoSelecionado === 'personalizado') {
+        // Limpar formulário para entrada manual
+        limparFormularioVariaveis();
+    }
+}
+
+function preencherFormularioVariaveis(dados) {
+    // Preenche os campos de variáveis com os dados fornecidos
+    var inputs = document.querySelectorAll('[data-variavel]');
+    inputs.forEach(function(input) {
+        var variavel = input.dataset.variavel;
+        if (dados[variavel] !== undefined) {
+            input.value = dados[variavel];
+        }
+    });
+}
+
+function limparFormularioVariaveis() {
+    var inputs = document.querySelectorAll('[data-variavel]');
+    inputs.forEach(function(input) {
+        input.value = '';
+    });
+}
+
+function coletarDadosFormulario() {
+    var dados = {};
+    var inputs = document.querySelectorAll('[data-variavel]');
+    
+    inputs.forEach(function(input) {
+        var variavel = input.dataset.variavel;
+        dados[variavel] = input.value || '[' + variavel + ']';
+    });
+    
+    return dados;
+}
+
+// === FUNÇÃO PRINCIPAL DE ATUALIZAÇÃO ===
+
+function atualizarPreview() {
+    document.getElementById('status-preview').textContent = 'Atualizando...';
+    
+    // Coleta dados do formulário
+    var dadosFormulario = coletarDadosFormulario();
+    
+    // Renderiza template com novos dados
+    var assuntoRenderizado = renderizarTemplate(templateAtual.assunto, dadosFormulario);
+    var corpoRenderizado = renderizarTemplate(templateAtual.corpo_html, dadosFormulario);
+    var textoRenderizado = renderizarTemplate(templateAtual.corpo_texto, dadosFormulario);
+    
+    // Atualiza preview
+    document.getElementById('assunto-preview').textContent = assuntoRenderizado;
+    
+    // Atualiza iframe
+    var iframe = document.getElementById('iframe-email');
+    if (iframe) {
+        iframe.srcdoc = corpoRenderizado;
+    }
+    
+    // Atualiza código
+    document.getElementById('pre-html').textContent = corpoRenderizado;
+    if (document.getElementById('pre-texto')) {
+        document.getElementById('pre-texto').textContent = textoRenderizado;
+    }
+    
+    document.getElementById('status-preview').textContent = 'Atualizado';
+    
+    // Limpa status após 2 segundos
+    setTimeout(function() {
+        document.getElementById('status-preview').textContent = '';
+    }, 2000);
+}
+
+// === FUNÇÃO DE RENDERIZAÇÃO DE TEMPLATE ===
+
+function renderizarTemplate(template, dados) {
+    if (!template) return '';
+    
+    var resultado = template;
+    
+    // Substitui variáveis no formato {{ variavel }}
+    for (var chave in dados) {
+        if (dados.hasOwnProperty(chave)) {
+            var valorSubstituicao = dados[chave] || '[' + chave + ']';
+            // Substitui todas as ocorrências da variável
+            while (resultado.indexOf('{{' + chave + '}}') !== -1) {
+                resultado = resultado.replace('{{' + chave + '}}', valorSubstituicao);
+            }
+            // Substitui também com espaços
+            while (resultado.indexOf('{{ ' + chave + ' }}') !== -1) {
+                resultado = resultado.replace('{{ ' + chave + ' }}', valorSubstituicao);
+            }
+        }
+    }
+    
+    return resultado;
+}
+
+// === FUNÇÕES AUXILIARES ===
+
+function ajustarAlturaIframe() {
+    var iframe = document.getElementById('iframe-email');
+    if (iframe) {
+        try {
+            setTimeout(function() {
+                var altura = Math.min(iframe.contentWindow.document.body.scrollHeight + 40, 600);
+                iframe.style.height = altura + 'px';
+            }, 100);
+        } catch (e) {
+            console.log('Não foi possível ajustar altura do iframe:', e);
+        }
+    }
+}
+
+function buscarClienteReal() {
+    // Implementar busca de cliente real via AJAX
+    fetch('/emails/api/cliente-exemplo/')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                dadosAtivos = data.dados;
+                preencherFormularioVariaveis(dadosAtivos);
+                atualizarPreview();
+            } else {
+                alert('Nenhum cliente encontrado para exemplo');
+                document.getElementById('dados-exemplo').value = 'exemplo';
+                carregarDadosExemplo();
+            }
+        })
+        .catch(function(error) {
+            console.error('Erro ao buscar cliente:', error);
+            alert('Erro ao buscar dados de cliente real');
+            document.getElementById('dados-exemplo').value = 'exemplo';
+            carregarDadosExemplo();
+        });
+}
+
+// === FUNÇÕES DE AÇÃO ===
+
+function enviarEmailTeste() {
+    var email = prompt('Digite o email para envio de teste:');
+    if (!email) return;
+    
+    if (!email.includes('@')) {
+        alert('Email inválido!');
+        return;
+    }
+    
+    var dadosFormulario = coletarDadosFormulario();
+    
+    // Enviar via AJAX
+    fetch('/emails/api/enviar-teste/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            template_id: templateAtual.id,
+            email_destino: email,
+            dados_teste: dadosFormulario
+        })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alert('Email de teste enviado com sucesso!');
+        } else {
+            alert('Erro ao enviar email de teste: ' + data.message);
+        }
+    })
+    .catch(function(error) {
+        console.error('Erro:', error);
+        alert('Erro ao enviar email de teste');
+    });
+}
+
+function exportarTemplate() {
+    var dadosFormulario = coletarDadosFormulario();
+    var assuntoRenderizado = renderizarTemplate(templateAtual.assunto, dadosFormulario);
+    var corpoRenderizado = renderizarTemplate(templateAtual.corpo_html, dadosFormulario);
+    
+    var exportData = {
+        nome: '{{ template.nome|escapejs }}',
+        assunto: assuntoRenderizado,
+        corpo_html: corpoRenderizado,
+        corpo_texto: renderizarTemplate(templateAtual.corpo_texto, dadosFormulario),
+        dados_utilizados: dadosFormulario
+    };
+    
+    var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_' + templateAtual.id + '_preview.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function toggleGuiaVariaveis() {
+    var guia = document.getElementById('guia-variaveis');
+    var texto = document.getElementById('toggle-guia-text');
+    var icone = document.getElementById('toggle-guia-icon');
+    
+    if (guia.style.display === 'none') {
+        guia.style.display = 'block';
+        texto.textContent = 'Ocultar Guia';
+        icone.setAttribute('data-feather', 'chevron-up');
+    } else {
+        guia.style.display = 'none';
+        texto.textContent = 'Mostrar Guia';
+        icone.setAttribute('data-feather', 'chevron-down');
+    }
+    feather.replace();
+}
+
+// === FUNÇÕES UTILITÁRIAS ===
+
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// === ATALHOS DE TECLADO ===
+
+document.addEventListener('keydown', function(e) {
+    // Ctrl + R para atualizar preview
+    if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        atualizarPreview();
+    }
+    
+    // Ctrl + T para enviar teste
+    if (e.ctrlKey && e.key === 't') {
+        e.preventDefault();
+        enviarEmailTeste();
+    }
+    
+    // Ctrl + E para exportar
+    if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        exportarTemplate();
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* === ESTILOS DO VISUALIZADOR === */
+
+/* Preview do email */
+#iframe-email {
+    transition: height 0.3s ease;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+/* Área de código */
+#area-codigo {
+    background: var(--bg-primary);
+}
+
+#area-codigo button {
+    padding: var(--space-sm) var(--space-md);
+    flex: 1;
+}
+
+#area-codigo pre {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* Formulário de variáveis */
+#variaveis-form input[type="text"] {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#variaveis-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Cabeçalho do email simulado */
+.email-header {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border-bottom: 2px solid var(--border-primary);
+}
+
+/* Status do preview */
+#status-preview {
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    transition: all 0.2s ease;
+}
+
+/* Guia de variáveis */
+#guia-variaveis {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Botões de ação */
+.btn-modern {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-modern:active {
+    transform: translateY(0);
+}
+
+/* Animação de loading */
+.loading {
+    position: relative;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .grid-modern[style*="grid-template-columns: 1fr 2fr"] {
+        grid-template-columns: 1fr !important;
+        gap: var(--space-md);
+    }
+    
+    #variaveis-form {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .email-header {
+        padding: var(--space-sm) !important;
+    }
+    
+    .email-header > div {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: var(--space-xs) !important;
+    }
+}
+
+/* Melhorias de acessibilidade */
+button:focus,
+input:focus,
+select:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* Indicadores visuais */
+.variavel-obrigatoria {
+    border-left: 3px solid var(--accent-danger);
+}
+
+.variavel-opcional {
+    border-left: 3px solid var(--accent-success);
+}
+
+/* Tooltip para variáveis */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-dark, #1f2937);
+    color: var(--text-light, white);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Scrollbar personalizada */
+#area-codigo::-webkit-scrollbar,
+#variaveis-form::-webkit-scrollbar {
+    width: 6px;
+}
+
+#area-codigo::-webkit-scrollbar-track,
+#variaveis-form::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+#area-codigo::-webkit-scrollbar-thumb,
+#variaveis-form::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+    border-radius: 3px;
+}
+
+#area-codigo::-webkit-scrollbar-thumb:hover,
+#variaveis-form::-webkit-scrollbar-thumb:hover {
+    background: var(--border-primary);
+}
+
+/* Destaque de sintaxe básico */
+.syntax-variable {
+    color: var(--accent-primary);
+    font-weight: var(--font-weight-medium);
+}
+
+.syntax-tag {
+    color: var(--accent-success);
+}
+
+.syntax-attribute {
+    color: var(--accent-warning);
+}
+
+/* Estados dos botões */
+.btn-modern.btn-modern-primary.active {
+    background: var(--accent-primary);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Animação de entrada */
+.fade-in {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

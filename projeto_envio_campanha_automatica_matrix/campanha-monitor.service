@@ -1,0 +1,25 @@
+[Unit]
+Description=Monitor de Campanhas de Email - Django
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=darlan
+Group=darlan
+WorkingDirectory=/home/darlan/projetos_django/projeto_envio_campanha_automatica/projeto_envio_campanha_automatica_matrix
+ExecStart=/home/darlan/projetos_django/projeto_envio_campanha_automatica/projeto_envio_campanha_automatica_matrix/myenv/bin/python manage.py daemon_monitor --interval 30 --verbose
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Variáveis de ambiente
+Environment=DJANGO_SETTINGS_MODULE=campanha_manager.settings
+Environment=PYTHONPATH=/home/darlan/projetos_django/projeto_envio_campanha_automatica/projeto_envio_campanha_automatica_matrix
+Environment=HOME=/home/darlan
+
+[Install]
+WantedBy=multi-user.target

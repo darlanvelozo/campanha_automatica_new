@@ -1,0 +1,165 @@
+{% extends 'campaigns/base.html' %}
+
+{% block title %}{{ campaign.name }} - Detalhes{% endblock %}
+
+{% block page_title %}{{ campaign.name }}{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'campaign_list' %}" class="btn btn-secondary btn-sm">← Voltar</a>
+{% if campaign.enabled %}
+{% if not campaign.has_running_execution %}
+<form method="post" action="{% url 'execute_campaign' campaign.id %}" style="display: inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Executar campanha {{ campaign.name }}?')">▶ Executar</button>
+</form>
+{% endif %}
+{% endif %}
+<a href="/admin/campaigns/campaign/{{ campaign.id }}/change/" class="btn btn-primary btn-sm">✏ Editar</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+        <div>
+            {% if campaign.description %}
+            <p style="color: var(--text-secondary); font-size: 1.0625rem;">{{ campaign.description }}</p>
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            {% if campaign.has_running_execution %}
+            <span class="badge badge-running" style="font-size: 1rem; padding: 8px 16px;">🔄 Executando</span>
+            {% endif %}
+            {% if campaign.enabled %}
+            <span class="badge badge-success" style="font-size: 1rem; padding: 8px 16px;">✓ Ativa</span>
+            {% else %}
+            <span class="badge badge-secondary" style="font-size: 1rem; padding: 8px 16px;">○ Inativa</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-top: 32px;">
+        <div
+            style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent-primary);">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+                ID da Campanha Native</h4>
+            <p style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">{{ campaign.campaign_id }}</p>
+        </div>
+
+        <div
+            style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent-info);">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Template SQL ID</h4>
+            <p style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">{{ campaign.template_sql_id }}</p>
+        </div>
+
+        <div
+            style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent-success);">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Credencial Banco ID</h4>
+            <p style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">{{ campaign.credencial_banco_id }}
+            </p>
+        </div>
+
+        <div
+            style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent-info);">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Credencial Hubsoft ID</h4>
+            <p style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">{{ campaign.credencial_hubsoft_id|default:"N/A" }}</p>
+        </div>
+    </div>
+
+    <div style="margin-top: 28px; background: var(--bg-tertiary); padding: 20px; border-radius: 12px;">
+        <h4 style="color: var(--text-primary); font-size: 1rem; margin-bottom: 12px; font-weight: 700;">📋 Variáveis</h4>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% for key, value in campaign.valores_variaveis.items %}
+            <div style="background: var(--bg-secondary); padding: 12px 16px; border-radius: 8px; border: 2px solid var(--border-primary);">
+                <span style="color: var(--text-tertiary); font-size: 0.875rem; font-weight: 600;">{{ key }}:</span>
+                <span style="color: var(--text-primary); font-size: 1rem; font-weight: 700; margin-left: 8px;">{{ value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid var(--border-primary);">
+        <p style="color: var(--text-secondary); font-size: 0.9375rem;">
+            <strong>Última Execução:</strong>
+            {% if campaign.last_executed_at %}
+            {{ campaign.last_executed_at|date:"d/m/Y H:i:s" }}
+            {% else %}
+            Nunca executada
+            {% endif %}
+        </p>
+    </div>
+
+</div>
+
+<div class="card" style="margin-top: 32px;">
+    <h3 style="margin-bottom: 24px;">📊 Histórico de Execuções</h3>
+    {% if executions %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Registros</th>
+                    <th>Execução ID</th>
+                    <th>Lista ID</th>
+                    <th>Iniciado em</th>
+                    <th>Duração</th>
+                    <th>Resultado</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for execution in executions %}
+                <tr>
+                    <td><strong>#{{ execution.id }}</strong></td>
+                    <td>
+                        {% if execution.status == 'completed' %}
+                        <span class="badge badge-success">✓ {{ execution.get_status_display }}</span>
+                        {% elif execution.status == 'failed' %}
+                        <span class="badge badge-danger">✗ {{ execution.get_status_display }}</span>
+                        {% elif execution.status in 'running,monitoring,creating_list,updating_campaign' %}
+                        <span class="badge badge-running">🔄 {{ execution.get_status_display }}</span>
+                        {% elif execution.status == 'timeout' %}
+                        <span class="badge badge-warning">⏱ {{ execution.get_status_display }}</span>
+                        {% else %}
+                        <span class="badge badge-secondary">{{ execution.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ execution.total_records }}</strong></td>
+                    <td>{{ execution.execucao_id|default:"-" }}</td>
+                    <td>{{ execution.lista_id|default:"-" }}</td>
+                    <td>{{ execution.started_at|date:"d/m/Y H:i" }}</td>
+                    <td><strong>{{ execution.duration_str }}</strong></td>
+                    <td style="text-align: center; font-size: 1.25rem;">
+                        {% if execution.success %}
+                        <span style="color: var(--success);" title="Sucesso">✓</span>
+                        {% elif execution.status in 'failed,timeout' %}
+                        <span style="color: var(--danger);" title="Falhou">✗</span>
+                        {% else %}
+                        <span style="color: var(--gray-400);" title="Em andamento">○</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'execution_detail' execution.id %}" class="btn btn-secondary">Ver Logs</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <p style="font-size: 1.125rem;">Nenhuma execução encontrada</p>
+        <p style="margin-top: 8px;">Execute esta campanha para começar</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

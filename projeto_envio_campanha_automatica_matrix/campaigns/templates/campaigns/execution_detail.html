@@ -1,0 +1,247 @@
+{% extends 'campaigns/base.html' %}
+
+{% block title %}Execução #{{ execution.id }} - Detalhes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-entry {
+        padding: 14px 16px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+        font-family: 'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        border-left: 4px solid;
+    }
+
+    .log-INFO {
+        background: rgba(23, 162, 184, 0.2);
+        border-color: var(--accent-info);
+        color: var(--accent-info);
+    }
+
+    .log-WARNING {
+        background: rgba(255, 171, 0, 0.2);
+        border-color: var(--accent-warning);
+        color: var(--accent-warning);
+    }
+
+    .log-ERROR {
+        background: rgba(248, 81, 73, 0.2);
+        border-color: var(--accent-danger);
+        color: var(--accent-danger);
+    }
+
+    .log-timestamp {
+        color: inherit;
+        opacity: 0.7;
+        margin-right: 12px;
+        font-weight: 600;
+    }
+
+    .log-level {
+        font-weight: 700;
+        margin-right: 12px;
+    }
+
+    .auto-refresh {
+        background: var(--success);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: var(--bg-tertiary);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 12px;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-primary), #58a6ff);
+        animation: progress 2s ease-in-out infinite;
+    }
+
+    @keyframes progress {
+        0% {
+            width: 0%;
+        }
+
+        50% {
+            width: 70%;
+        }
+
+        100% {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Execução #{{ execution.id }}{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'campaign_detail' execution.campaign.id %}" class="btn btn-secondary btn-sm">← Voltar para Campanha</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+        <div>
+            <p style="color: var(--text-secondary); font-size: 1.0625rem; margin-bottom: 8px;">{{ execution.campaign.name }}</p>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            {% if execution.status == 'completed' %}
+            <span class="badge badge-success" style="font-size: 1rem; padding: 8px 16px;">✓ {{ execution.get_status_display }}</span>
+            {% elif execution.status == 'failed' %}
+            <span class="badge badge-danger" style="font-size: 1rem; padding: 8px 16px;">✗ {{ execution.get_status_display }}</span>
+            {% elif execution.status in 'running,monitoring,creating_list,updating_campaign' %}
+            <span class="badge badge-running" style="font-size: 1rem; padding: 8px 16px;">🔄 {{ execution.get_status_display }}</span>
+            <span class="auto-refresh" id="auto-refresh-indicator">● Auto-refresh</span>
+            {% elif execution.status == 'timeout' %}
+            <span class="badge badge-warning" style="font-size: 1rem; padding: 8px 16px;">⏱ {{ execution.get_status_display }}</span>
+            {% else %}
+            <span class="badge badge-secondary" style="font-size: 1rem; padding: 8px 16px;">{{ execution.get_status_display }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if execution.status in 'running,monitoring,creating_list,updating_campaign' %}
+    <div class="progress-bar">
+        <div class="progress-bar-fill"></div>
+    </div>
+    {% endif %}
+
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 32px;">
+        <div style="background: var(--bg-tertiary); padding: 18px; border-radius: 12px;">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.8125rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Execução ID (API)</h4>
+            <p style="font-size: 1.375rem; font-weight: 700; color: var(--text-primary);">{{ execution.execucao_id|default:"Aguardando..." }}</p>
+        </div>
+
+        <div style="background: var(--bg-tertiary); padding: 18px; border-radius: 12px;">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.8125rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Lista ID (Native)</h4>
+            <p style="font-size: 1.375rem; font-weight: 700; color: var(--text-primary);">{{ execution.lista_id|default:"Aguardando..." }}</p>
+        </div>
+
+        <div style="background: var(--bg-tertiary); padding: 18px; border-radius: 12px;">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.8125rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Total de Registros</h4>
+            <p style="font-size: 1.375rem; font-weight: 700; color: var(--text-primary);">{{ execution.total_records }}</p>
+        </div>
+
+        <div style="background: var(--bg-tertiary); padding: 18px; border-radius: 12px;">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.8125rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Iniciado em</h4>
+            <p style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary);">{{ execution.started_at|date:"d/m/Y H:i:s" }}</p>
+        </div>
+
+        <div style="background: var(--bg-tertiary); padding: 18px; border-radius: 12px;">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.8125rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Concluído em</h4>
+            <p style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary);">
+                {% if execution.completed_at %}
+                {{ execution.completed_at|date:"d/m/Y H:i:s" }}
+                {% else %}
+                <span style="color: var(--accent-warning);">Em andamento...</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <div style="background: var(--bg-tertiary); padding: 18px; border-radius: 12px;">
+            <h4
+                style="color: var(--text-tertiary); font-size: 0.8125rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Duração</h4>
+            <p style="font-size: 1.375rem; font-weight: 700; color: var(--accent-primary);">{{ execution.duration_str }}</p>
+        </div>
+    </div>
+
+    {% if execution.error_message %}
+    <div
+        style="margin-top: 24px; background: #fee2e2; padding: 20px; border-radius: 12px; border-left: 4px solid var(--danger);">
+        <h4 style="color: #991b1b; font-size: 1rem; margin-bottom: 10px; font-weight: 700;">⚠ Mensagem de Erro</h4>
+        <p style="color: #7f1d1d; font-family: monospace; font-size: 0.9375rem;">{{ execution.error_message }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top: 32px;">
+    <h3 style="margin-bottom: 24px;">📝 Logs de Execução</h3>
+    <div id="logs-container">
+        {% if logs %}
+        {% for log in logs %}
+        <div class="log-entry log-{{ log.level }}">
+            <span class="log-timestamp">{{ log.timestamp|date:"H:i:s" }}</span>
+            <span class="log-level">{{ log.level }}</span>
+            <span>{{ log.message }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <p style="font-size: 1.125rem;">Nenhum log disponível</p>
+            <p style="margin-top: 8px;">Os logs aparecerão aqui durante a execução</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if execution.status in 'pending,running,monitoring,creating_list,updating_campaign' %}
+<script>
+    // Auto-refresh para execuções em andamento
+    let refreshInterval = setInterval(function () {
+        fetch('{% url "execution_status_api" execution.id %}')
+            .then(response => response.json())
+            .then(data => {
+                // Atualizar status - se finalizado, recarregar página
+                if (['completed', 'failed', 'timeout'].includes(data.status)) {
+                    clearInterval(refreshInterval);
+                    location.reload();
+                }
+
+                // Atualizar logs
+                const logsContainer = document.getElementById('logs-container');
+                logsContainer.innerHTML = '';
+
+                if (data.logs.length === 0) {
+                    logsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <p style="font-size: 1.125rem;">Nenhum log disponível</p>
+                        <p style="margin-top: 8px;">Os logs aparecerão aqui durante a execução</p>
+                    </div>
+                `;
+                } else {
+                    data.logs.forEach(log => {
+                        const logEntry = document.createElement('div');
+                        logEntry.className = `log-entry log-${log.level}`;
+
+                        const timestamp = new Date(log.timestamp).toLocaleTimeString('pt-BR');
+                        logEntry.innerHTML = `
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-level">${log.level}</span>
+                        <span>${log.message}</span>
+                    `;
+
+                        logsContainer.appendChild(logEntry);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao atualizar status:', error);
+            });
+    }, 5000); // Atualiza a cada 5 segundos
+</script>
+{% endif %}
+{% endblock %}

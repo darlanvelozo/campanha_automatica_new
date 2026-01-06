@@ -1,0 +1,920 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Campanhas{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+    <style>
+        /*-------------------------------------------*/
+        /* DESIGN SYSTEM GLOBAL - VARIÁVEIS CSS     */
+        /*-------------------------------------------*/
+        :root {
+            /* Colors */
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: rgba(22, 27, 34, 0.75);
+            --border-primary: rgba(139, 148, 158, 0.3);
+            --border-secondary: rgba(139, 148, 158, 0.1);
+            
+            /* Accent Colors */
+            --accent-primary: #33a0ff;
+            --accent-success: #28a745;
+            --accent-warning: #ffab00;
+            --accent-danger: #f85149;
+            --accent-info: #17a2b8;
+            
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #c9d1d9;
+            --text-tertiary: #8b949e;
+            --text-muted: #6a737d;
+            
+            /* Spacing System (8px grid) */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            --space-3xl: 64px;
+            
+            /* Typography */
+            --font-size-xs: 0.75rem;   /* 12px */
+            --font-size-sm: 0.875rem;  /* 14px */
+            --font-size-base: 1rem;    /* 16px */
+            --font-size-lg: 1.125rem;  /* 18px */
+            --font-size-xl: 1.25rem;   /* 20px */
+            --font-size-2xl: 1.5rem;   /* 24px */
+            --font-size-3xl: 1.875rem; /* 30px */
+            --font-size-4xl: 2.25rem;  /* 36px */
+            
+            /* Font Weights */
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            
+            /* Line Heights */
+            --line-height-tight: 1.25;
+            --line-height-normal: 1.5;
+            --line-height-relaxed: 1.75;
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+            
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+            --transition-slow: 0.35s ease;
+            
+            /* Fonts */
+            --font-family-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family-mono: 'Roboto Mono', 'SF Mono', Consolas, monospace;
+            
+            /* Layout */
+            --navbar-height: 70px;
+            
+            /* Legacy variables for compatibility */
+            --bg-color: var(--bg-primary);
+            --card-bg-color: var(--bg-tertiary);
+            --navbar-bg-color: rgba(13, 17, 23, 0.95);
+            --border-color: var(--border-primary);
+            --primary-accent-color: var(--accent-primary);
+            --primary-glow-color: rgba(51, 160, 255, 0.5);
+            --success-color: var(--accent-success);
+            --error-color: var(--accent-danger);
+            --warning-color: var(--accent-warning);
+            --text-color: var(--text-secondary);
+            --text-secondary-color: var(--text-tertiary);
+            --text-muted-color: var(--text-muted);
+            --border-radius: var(--radius-md);
+            --font-primary: var(--font-family-primary);
+            --font-mono: var(--font-family-mono);
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+
+        body {
+            font-family: var(--font-family-primary);
+            font-weight: var(--font-weight-normal);
+            color: var(--text-secondary);
+            background-color: var(--bg-primary);
+            line-height: var(--line-height-normal);
+            min-height: 100vh;
+            padding-top: var(--navbar-height);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /*-------------------------------------------*/
+        /* 2. NAVBAR/APPBAR                          */
+        /*-------------------------------------------*/
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--navbar-height);
+            background: var(--navbar-bg-color);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-color);
+            text-decoration: none;
+            margin-right: 40px;
+        }
+
+        .navbar-brand:hover {
+            color: var(--primary-accent-color);
+        }
+
+        .navbar-brand .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary-accent-color), #58a6ff);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            list-style: none;
+            flex: 1;
+        }
+
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            color: var(--text-secondary-color);
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--text-color);
+            background: rgba(139, 148, 158, 0.1);
+        }
+
+        .nav-link.active {
+            color: var(--primary-accent-color);
+            background: rgba(51, 160, 255, 0.1);
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: var(--primary-accent-color);
+            border-radius: 50%;
+        }
+
+        /* Dropdown Menu */
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-toggle::after {
+            content: '';
+            margin-left: 4px;
+            border: 3px solid transparent;
+            border-top-color: currentColor;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+            padding: 8px 0;
+            display: none;
+            z-index: 1001;
+            backdrop-filter: blur(20px);
+        }
+
+        .dropdown:hover .dropdown-menu {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            color: var(--text-secondary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(139, 148, 158, 0.1);
+            color: var(--text-color);
+        }
+
+        /* Actions na Navbar */
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .action-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(51, 160, 255, 0.1);
+            color: var(--primary-accent-color);
+            border: 1px solid rgba(51, 160, 255, 0.3);
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .action-button:hover {
+            background: rgba(51, 160, 255, 0.2);
+            border-color: rgba(51, 160, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .action-button.success {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--success-color);
+            border-color: rgba(40, 167, 69, 0.3);
+        }
+
+        .action-button.success:hover {
+            background: rgba(40, 167, 69, 0.2);
+            border-color: rgba(40, 167, 69, 0.5);
+        }
+
+        /* Mobile Responsivo */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 15px;
+            }
+            
+            .navbar-brand {
+                margin-right: 20px;
+                font-size: 1.1rem;
+            }
+            
+            .nav-link {
+                font-size: 0.85rem;
+                padding: 6px 12px;
+            }
+            
+            .navbar-actions {
+                gap: 8px;
+            }
+            
+            .action-button {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+            
+            .dropdown-menu {
+                right: 0;
+                left: auto;
+            }
+        }
+
+        /*-------------------------------------------*/
+        /* 3. CONTAINER PRINCIPAL                    */
+        /*-------------------------------------------*/
+        .main-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary-color);
+            font-size: 1rem;
+        }
+
+        /*-------------------------------------------*/
+        /* 4. COMPONENTES BASE                       */
+        /*-------------------------------------------*/
+        .card {
+            background: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(20px);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-family: var(--font-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary-accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2a8ae6;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-outline:hover {
+            background: rgba(139, 148, 158, 0.1);
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 12px 16px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid rgba(40, 167, 69, 0.4);
+            color: var(--success-color);
+        }
+
+        .alert-error {
+            background: rgba(248, 81, 73, 0.2);
+            border: 1px solid rgba(248, 81, 73, 0.4);
+            color: var(--error-color);
+        }
+
+        .alert-warning {
+            background: rgba(255, 171, 0, 0.2);
+            border: 1px solid rgba(255, 171, 0, 0.4);
+            color: var(--warning-color);
+        }
+
+        /* Loading Indicator */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--primary-accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /*-------------------------------------------*/
+        /* SISTEMA DE COMPONENTES MODERNOS           */
+        /*-------------------------------------------*/
+        
+        /* Cards modernos */
+        .modern-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-lg);
+            transition: all var(--transition-normal);
+            margin-bottom: var(--space-lg);
+        }
+
+        .modern-card:hover {
+            border-color: var(--border-secondary);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .modern-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-secondary);
+        }
+
+        .modern-card-title {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .modern-card-body {
+            color: var(--text-secondary);
+        }
+
+        /* Botões modernos */
+        .btn-modern {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family-primary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            line-height: var(--line-height-tight);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .btn-modern:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-modern:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        .btn-modern-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #58a6ff);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .btn-modern-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(51, 160, 255, 0.3);
+        }
+
+        .btn-modern-success {
+            background: linear-gradient(135deg, var(--accent-success), #20c997);
+            color: white;
+            border-color: var(--accent-success);
+        }
+
+        .btn-modern-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-modern-warning {
+            background: linear-gradient(135deg, var(--accent-warning), #ffc107);
+            color: var(--bg-primary);
+            border-color: var(--accent-warning);
+        }
+
+        .btn-modern-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 171, 0, 0.3);
+        }
+
+        .btn-modern-danger {
+            background: linear-gradient(135deg, var(--accent-danger), #ff6b9d);
+            color: white;
+            border-color: var(--accent-danger);
+        }
+
+        .btn-modern-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(248, 81, 73, 0.3);
+        }
+
+        .btn-modern-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border-color: var(--border-primary);
+        }
+
+        .btn-modern-outline:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-secondary);
+        }
+
+        /* Status badges modernos */
+        .status-badge-modern {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all var(--transition-normal);
+        }
+
+        .status-badge-modern::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        .status-pendente-modern { 
+            background: rgba(255, 171, 0, 0.15);
+            color: var(--accent-warning);
+            border: 1px solid rgba(255, 171, 0, 0.3);
+        }
+        
+        .status-executando-modern { 
+            background: rgba(51, 160, 255, 0.15);
+            color: var(--accent-primary);
+            border: 1px solid rgba(51, 160, 255, 0.3);
+        }
+        
+        .status-concluida-modern { 
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--accent-success);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+        
+        .status-erro-modern { 
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--accent-danger);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+
+        /* Grid system responsivo */
+        .grid-modern {
+            display: grid;
+            gap: var(--space-md);
+        }
+
+        .grid-1 { grid-template-columns: 1fr; }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-auto { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            .modern-card {
+                padding: var(--space-lg);
+            }
+        }
+
+        /* Utilidades */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+
+        .hidden { display: none; }
+        .visible { display: block; }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="{% url 'pagina_processar_consulta' %}" class="navbar-brand">
+            <div class="brand-icon">
+                <i data-feather="zap" style="width: 18px; height: 18px;"></i>
+            </div>
+            <span>Sistema Campanhas</span>
+        </a>
+
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a href="{% url 'pagina_processar_consulta' %}" class="nav-link {% if request.resolver_match.url_name == 'pagina_processar_consulta' %}active{% endif %}">
+                    <i data-feather="play-circle" style="width: 16px; height: 16px;"></i>
+                    Nova Consulta
+                </a>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle">
+                    <i data-feather="list" style="width: 16px; height: 16px;"></i>
+                    Execuções
+                </a>
+                <div class="dropdown-menu">
+                    <a href="{% url 'listar_execucoes' %}" class="dropdown-item">
+                        <i data-feather="clock" style="width: 14px; height: 14px;"></i>
+                        Histórico de Execuções
+                    </a>
+                    <a href="{% url 'listar_execucoes' %}?status=executando" class="dropdown-item">
+                        <i data-feather="activity" style="width: 14px; height: 14px;"></i>
+                        Em Andamento
+                    </a>
+                    <a href="{% url 'listar_execucoes' %}?status=concluida" class="dropdown-item">
+                        <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
+                        Concluídas
+                    </a>
+                </div>
+            </li>
+
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle">
+                    <i data-feather="send" style="width: 16px; height: 16px;"></i>
+                    HSM
+                </a>
+                <div class="dropdown-menu">
+                    <a href="{% url 'listar_envios_hsm' %}" class="dropdown-item">
+                        <i data-feather="message-square" style="width: 14px; height: 14px;"></i>
+                        Envios HSM
+                    </a>
+                    <a href="{% url 'listar_envios_hsm' %}?status=enviando" class="dropdown-item">
+                        <i data-feather="upload" style="width: 14px; height: 14px;"></i>
+                        Em Envio
+                    </a>
+                    <a href="{% url 'listar_envios_hsm' %}?status=concluido" class="dropdown-item">
+                        <i data-feather="check-square" style="width: 14px; height: 14px;"></i>
+                        Concluídos
+                    </a>
+                </div>
+            </li>
+
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle {% if 'emails' in request.path %}active{% endif %}">
+                    <i data-feather="mail" style="width: 16px; height: 16px;"></i>
+                    Emails
+                </a>
+                <div class="dropdown-menu">
+                    <a href="{% url 'emails:dashboard' %}" class="dropdown-item">
+                        <i data-feather="home" style="width: 14px; height: 14px;"></i>
+                        Dashboard
+                    </a>
+                    <a href="{% url 'emails:listar_campanhas' %}" class="dropdown-item">
+                        <i data-feather="mail" style="width: 14px; height: 14px;"></i>
+                        Campanhas
+                    </a>
+                    <a href="{% url 'emails:criar_campanha' %}" class="dropdown-item">
+                        <i data-feather="plus-circle" style="width: 14px; height: 14px;"></i>
+                        Nova Campanha
+                    </a>
+                    <a href="{% url 'emails:listar_templates' %}" class="dropdown-item">
+                        <i data-feather="file-text" style="width: 14px; height: 14px;"></i>
+                        Templates
+                    </a>
+                    <a href="{% url 'emails:listar_campanhas' %}?status=executando" class="dropdown-item">
+                        <i data-feather="activity" style="width: 14px; height: 14px;"></i>
+                        Em Execução
+                    </a>
+                    <a href="{% url 'emails:listar_campanhas' %}?status=concluida" class="dropdown-item">
+                        <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
+                        Concluídas
+                    </a>
+                </div>
+            </li>
+
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle {% if 'campaigns' in request.path %}active{% endif %}">
+                    <i data-feather="target" style="width: 16px; height: 16px;"></i>
+                    Campanhas Automáticas
+                </a>
+                <div class="dropdown-menu">
+                    <a href="{% url 'dashboard' %}" class="dropdown-item">
+                        <i data-feather="home" style="width: 14px; height: 14px;"></i>
+                        Dashboard
+                    </a>
+                    <a href="{% url 'campaign_list' %}" class="dropdown-item">
+                        <i data-feather="list" style="width: 14px; height: 14px;"></i>
+                        Todas as Campanhas
+                    </a>
+                    <a href="{% url 'campaign_list' %}?status=active" class="dropdown-item">
+                        <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
+                        Campanhas Ativas
+                    </a>
+                    <a href="{% url 'campaign_list' %}?status=inactive" class="dropdown-item">
+                        <i data-feather="x-circle" style="width: 14px; height: 14px;"></i>
+                        Campanhas Inativas
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="{% url 'admin:campaigns_campaign_changelist' %}" class="dropdown-item">
+                        <i data-feather="settings" style="width: 14px; height: 14px;"></i>
+                        Gerenciar no Admin
+                    </a>
+                </div>
+            </li>
+        </ul>
+
+        <div class="navbar-actions">
+            {% block navbar_actions %}
+            {% endblock %}
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {% if message.tags == 'success' %}
+                        <i data-feather="check-circle" style="width: 16px; height: 16px;"></i>
+                    {% elif message.tags == 'error' %}
+                        <i data-feather="x-circle" style="width: 16px; height: 16px;"></i>
+                    {% elif message.tags == 'warning' %}
+                        <i data-feather="alert-triangle" style="width: 16px; height: 16px;"></i>
+                    {% else %}
+                        <i data-feather="info" style="width: 16px; height: 16px;"></i>
+                    {% endif %}
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="page-header">
+            <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+            <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+        </div>
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Scripts -->
+    <script>
+        // Inicializa ícones do Feather
+        feather.replace();
+
+        // Função para mostrar alertas programaticamente
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            
+            const icon = type === 'success' ? 'check-circle' : 
+                        type === 'error' ? 'x-circle' : 
+                        type === 'warning' ? 'alert-triangle' : 'info';
+            
+            alertDiv.innerHTML = `
+                <i data-feather="${icon}" style="width: 16px; height: 16px;"></i>
+                ${message}
+            `;
+            
+            const mainContainer = document.querySelector('.main-container');
+            mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
+            
+            feather.replace();
+            
+            // Remove após 5 segundos
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        // Função para mostrar loading em botões
+        function setButtonLoading(button, loading = true) {
+            if (loading) {
+                button.disabled = true;
+                const originalContent = button.innerHTML;
+                button.dataset.originalContent = originalContent;
+                button.innerHTML = '<div class="loading"></div> Processando...';
+            } else {
+                button.disabled = false;
+                if (button.dataset.originalContent) {
+                    button.innerHTML = button.dataset.originalContent;
+                    delete button.dataset.originalContent;
+                }
+                feather.replace();
+            }
+        }
+
+        // Auto-hide alerts após 5 segundos
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.style.transition = 'opacity 0.3s ease';
+                        alert.style.opacity = '0';
+                        setTimeout(() => {
+                            if (alert.parentNode) {
+                                alert.parentNode.removeChild(alert);
+                            }
+                        }, 300);
+                    }
+                }, 5000);
+            });
+        });
+
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,1492 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Execução | {{ execucao.titulo }}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+    <style>
+        /*-------------------------------------------*/
+        /* 1. DESIGN SYSTEM - VARIÁVEIS CSS         */
+        /*-------------------------------------------*/
+        :root {
+            /* Colors */
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: rgba(22, 27, 34, 0.75);
+            --border-primary: rgba(139, 148, 158, 0.3);
+            --border-secondary: rgba(139, 148, 158, 0.1);
+            
+            /* Accent Colors */
+            --accent-primary: #33a0ff;
+            --accent-success: #28a745;
+            --accent-warning: #ffab00;
+            --accent-danger: #f85149;
+            --accent-info: #17a2b8;
+            
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #c9d1d9;
+            --text-tertiary: #8b949e;
+            --text-muted: #6a737d;
+            
+            /* Spacing System (8px grid) */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            --space-3xl: 64px;
+            
+            /* Typography */
+            --font-size-xs: 0.75rem;   /* 12px */
+            --font-size-sm: 0.875rem;  /* 14px */
+            --font-size-base: 1rem;    /* 16px */
+            --font-size-lg: 1.125rem;  /* 18px */
+            --font-size-xl: 1.25rem;   /* 20px */
+            --font-size-2xl: 1.5rem;   /* 24px */
+            --font-size-3xl: 1.875rem; /* 30px */
+            --font-size-4xl: 2.25rem;  /* 36px */
+            
+            /* Font Weights */
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            
+            /* Line Heights */
+            --line-height-tight: 1.25;
+            --line-height-normal: 1.5;
+            --line-height-relaxed: 1.75;
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+            
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+            --transition-slow: 0.35s ease;
+            
+            /* Fonts */
+            --font-family-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family-mono: 'Roboto Mono', 'SF Mono', Consolas, monospace;
+        }
+
+        /*-------------------------------------------*/
+        /* 2. RESET E BASE STYLES                   */
+        /*-------------------------------------------*/
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            line-height: var(--line-height-normal);
+        }
+
+        body {
+            font-family: var(--font-family-primary);
+            font-weight: var(--font-weight-normal);
+            color: var(--text-secondary);
+            background-color: var(--bg-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /*-------------------------------------------*/
+        /* 3. LAYOUT PRINCIPAL (MODERN UX PATTERN)  */
+        /*-------------------------------------------*/
+        
+        /* Container principal com grid responsivo */
+        .app-layout {
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            grid-template-areas: 
+                "header"
+                "main";
+        }
+
+        /* Header principal */
+        .app-header {
+            grid-area: header;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-primary);
+            padding: var(--space-md) var(--space-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Container do conteúdo principal */
+        .main-content {
+            grid-area: main;
+            padding: var(--space-lg);
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: var(--space-xl);
+            align-items: start;
+        }
+
+        /* Área de conteúdo principal */
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+
+        /* Sidebar de ações */
+        .actions-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            position: sticky;
+            top: calc(var(--space-3xl) + var(--space-lg));
+        }
+
+        /*-------------------------------------------*/
+        /* 4. COMPONENTES BÁSICOS                   */
+        /*-------------------------------------------*/
+        
+        /* Breadcrumb navigation */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-md);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+        }
+
+        .breadcrumb a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        .breadcrumb a:hover {
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-muted);
+        }
+
+        /* Page header */
+        .page-header {
+            margin-bottom: var(--space-xl);
+        }
+
+        .page-title {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .page-subtitle {
+            font-size: var(--font-size-lg);
+            color: var(--text-tertiary);
+            font-weight: var(--font-weight-normal);
+        }
+
+        /* Cards modernos */
+        .card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-lg);
+            transition: all var(--transition-normal);
+        }
+
+        .card:hover {
+            border-color: var(--border-secondary);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-secondary);
+        }
+
+        .card-title {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .card-body {
+            color: var(--text-secondary);
+        }
+
+        /*-------------------------------------------*/
+        /* 5. STATUS E MÉTRICAS (UX PATTERN)        */
+        /*-------------------------------------------*/
+        
+        /* Status badge moderno */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all var(--transition-normal);
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        .status-pendente { 
+            background: rgba(255, 171, 0, 0.15);
+            color: var(--accent-warning);
+            border: 1px solid rgba(255, 171, 0, 0.3);
+        }
+        
+        .status-executando { 
+            background: rgba(51, 160, 255, 0.15);
+            color: var(--accent-primary);
+            border: 1px solid rgba(51, 160, 255, 0.3);
+        }
+        
+        .status-concluida { 
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--accent-success);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+        
+        .status-erro { 
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--accent-danger);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+        
+        .status-cancelada { 
+            background: rgba(108, 117, 125, 0.15);
+            color: #6c757d;
+            border: 1px solid rgba(108, 117, 125, 0.3);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Grid de métricas responsivo */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards de métricas */
+        .metric-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition-normal);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--metric-color, var(--accent-primary));
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-md);
+        }
+
+        .metric-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--metric-color, var(--accent-primary));
+        }
+
+        .metric-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .metric-value {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            line-height: var(--line-height-tight);
+        }
+
+        .metric-change {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-top: var(--space-xs);
+        }
+
+        /* Cores específicas por métrica */
+        .metric-sql { --metric-color: #9370db; }
+        .metric-api { --metric-color: var(--accent-primary); }
+        .metric-success { --metric-color: var(--accent-success); }
+        .metric-error { --metric-color: var(--accent-danger); }
+
+        /* Barra de progresso moderna */
+        .progress-section {
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-secondary);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .progress-label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+        }
+
+        .progress-percentage {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-success));
+            border-radius: var(--radius-sm);
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /*-------------------------------------------*/
+        /* 6. SISTEMA DE BOTÕES (UX PATTERN)        */
+        /*-------------------------------------------*/
+        
+        /* Sidebar de ações */
+        .action-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            backdrop-filter: blur(10px);
+        }
+
+        .action-card-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-secondary);
+        }
+
+        .action-card-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .action-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+        }
+
+        .action-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .action-group-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: var(--font-weight-medium);
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Botões modernos */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family-primary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            line-height: var(--line-height-tight);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn:focus {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        /* Tamanhos de botões */
+        .btn-sm {
+            padding: var(--space-xs) var(--space-sm);
+            font-size: var(--font-size-xs);
+        }
+
+        .btn-lg {
+            padding: var(--space-md) var(--space-lg);
+            font-size: var(--font-size-base);
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        /* Variantes de cor */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #58a6ff);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(51, 160, 255, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-success), #20c997);
+            color: white;
+            border-color: var(--accent-success);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--accent-warning), #ffc107);
+            color: var(--bg-primary);
+            border-color: var(--accent-warning);
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 171, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-danger), #ff6b9d);
+            color: white;
+            border-color: var(--accent-danger);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(248, 81, 73, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border-color: var(--border-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-secondary);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        /* Botões de exportação especiais */
+        .export-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: var(--space-md);
+            text-align: left;
+            gap: var(--space-xs);
+        }
+
+        .export-btn-title {
+            font-weight: var(--font-weight-semibold);
+            color: currentColor;
+        }
+
+        .export-btn-description {
+            font-size: var(--font-size-xs);
+            opacity: 0.8;
+            color: currentColor;
+        }
+
+        /* Estados de loading */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: button-spin 1s linear infinite;
+        }
+
+        @keyframes button-spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /*-------------------------------------------*/
+        /* 7. TABELAS E DADOS (UX PATTERN)          */
+        /*-------------------------------------------*/
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: var(--space-md);
+            text-align: left;
+            border-bottom: 1px solid var(--border-secondary);
+        }
+
+        .data-table th {
+            background: var(--bg-primary);
+            color: var(--text-tertiary);
+            font-weight: var(--font-weight-semibold);
+            font-size: var(--font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            color: var(--text-secondary);
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /*-------------------------------------------*/
+        /* 8. RESPONSIVIDADE (MOBILE FIRST)         */
+        /*-------------------------------------------*/
+        
+        /* Mobile (base styles already mobile-first) */
+        @media (max-width: 640px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: var(--space-lg);
+                padding: var(--space-md);
+            }
+
+            .actions-sidebar {
+                position: static;
+                order: -1;
+            }
+
+            .page-title {
+                font-size: var(--font-size-2xl);
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .card {
+                padding: var(--space-lg);
+            }
+
+            .btn-full-mobile {
+                width: 100%;
+            }
+        }
+
+        /* Tablet */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr 280px;
+                gap: var(--space-lg);
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Desktop */
+        @media (min-width: 1025px) {
+            .main-content {
+                grid-template-columns: 1fr 320px;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* Large screens */
+        @media (min-width: 1400px) {
+            .main-content {
+                max-width: 1600px;
+                grid-template-columns: 1fr 400px;
+            }
+        }
+
+        /*-------------------------------------------*/
+        /* 9. UTILITÁRIOS E ESTADOS                 */
+        /*-------------------------------------------*/
+        
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+
+        .hidden { display: none; }
+        .visible { display: block; }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Estados de carregamento */
+        .loading-state {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* Animações de entrada */
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-up {
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .log-container {
+            background-color: rgba(0,0,0,0.3);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-top: 25px;
+        }
+        .log-container pre {
+            font-family: var(--font-mono);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            color: var(--text-secondary-color);
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-accent-color) var(--bg-color);
+        }
+        
+        /*-------------------------------------------*/
+        /* 5. TABELA DE RESULTADOS E PAGINAÇÃO       */
+        /*-------------------------------------------*/
+        .table-responsive { overflow-x: auto; }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .results-table th, .results-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .results-table th { color: var(--text-secondary-color); font-weight: 500; text-transform: uppercase; font-size: 0.8rem; }
+        .results-table td { color: var(--text-color); }
+        .results-table tr:last-child td { border-bottom: none; }
+        .results-table tr:hover { background-color: rgba(255,255,255,0.03); }
+
+        .status-icon { display: flex; align-items: center; gap: 8px; }
+        .status-icon .icon-success { color: var(--success-color); }
+        .status-icon .icon-error { color: var(--error-color); }
+        .error-details { font-family: var(--font-mono); font-size: 0.85rem; color: #ff9994; }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 30px;
+        }
+        .pagination a, .pagination span {
+            padding: 8px 15px;
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            color: var(--text-secondary-color);
+            transition: all 0.2s ease;
+        }
+        .pagination a:hover { background-color: var(--primary-accent-color); color: #fff; border-color: var(--primary-accent-color); }
+        .pagination .current { background-color: var(--primary-accent-color); color: #fff; border-color: var(--primary-accent-color); font-weight: 600; }
+
+    </style>
+</head>
+<body>
+<div class="app-layout fade-in">
+    <!-- Header principal -->
+    <header class="app-header">
+        <nav class="breadcrumb">
+            <a href="{% url 'listar_execucoes' %}">
+                <i data-feather="home" style="width: 14px; height: 14px;"></i>
+                Execuções
+            </a>
+            <span class="breadcrumb-separator">/</span>
+            <span>Execução #{{ execucao.id }}</span>
+        </nav>
+        
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i data-feather="git-commit"></i>
+                    {{ execucao.titulo }}
+                </h1>
+                <p class="page-subtitle">
+                    Execução #{{ execucao.id }} • 
+                    <span class="status-badge status-{{ execucao.status }}">
+                        {{ execucao.get_status_display }}
+                    </span>
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo principal -->
+    <main class="main-content">
+        <!-- Área de conteúdo principal -->
+        <div class="content-area">
+            <!-- Card de métricas -->
+            <div class="card slide-up">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i data-feather="bar-chart-2"></i>
+                        Visão Geral
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="metrics-grid">
+                        <div class="metric-card metric-sql">
+                            <div class="metric-header">
+                                <i data-feather="align-left" class="metric-icon"></i>
+                                <span class="metric-label">Registros SQL</span>
+                            </div>
+                            <div id="total-sql" class="metric-value">{{ execucao.total_registros_sql|default:"0" }}</div>
+                        </div>
+                        
+                        <div class="metric-card metric-api">
+                            <div class="metric-header">
+                                <i data-feather="radio" class="metric-icon"></i>
+                                <span class="metric-label">Consultas API</span>
+                            </div>
+                            <div id="total-api" class="metric-value">{{ execucao.total_consultados_api|default:"0" }}</div>
+                        </div>
+                        
+                        <div class="metric-card metric-success">
+                            <div class="metric-header">
+                                <i data-feather="check-circle" class="metric-icon"></i>
+                                <span class="metric-label">Sucessos</span>
+                            </div>
+                            <div id="total-success" class="metric-value">{{ execucao.total_consultados_api|default:"0" }}</div>
+                        </div>
+                        
+                        <div class="metric-card metric-error">
+                            <div class="metric-header">
+                                <i data-feather="x-circle" class="metric-icon"></i>
+                                <span class="metric-label">Erros</span>
+                            </div>
+                            <div id="total-error" class="metric-value">{{ execucao.total_erros|default:"0" }}</div>
+                        </div>
+                    </div>
+
+                    {% if execucao.status == 'executando' or execucao.status == 'pendente' %}
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span class="progress-label">Progresso da Execução</span>
+                            <span id="progress-percent" class="progress-percentage">0%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div id="progress-bar" class="progress-bar"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if execucao.log_execucao %}
+            <!-- Card de logs -->
+            <div class="card slide-up">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i data-feather="terminal"></i>
+                        Log de Execução
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="log-container">
+                        <pre id="log-content">{{ execucao.log_execucao }}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- HSM Section (apenas se concluída) -->
+            {% if execucao.status == 'concluida' %}
+            <div class="card slide-up">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i data-feather="send"></i>
+                        Envio de HSM via Matrix
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p style="color: var(--text-tertiary); margin-bottom: var(--space-lg);">
+                        Envie mensagens HSM via API Matrix para todos os clientes com dados válidos desta execução.
+                    </p>
+                    
+                    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-lg);">
+                        <a href="{% url 'configurar_envio_hsm' execucao.id %}" class="btn btn-success btn-lg">
+                            <i data-feather="settings"></i>
+                            Configurar Envio HSM
+                        </a>
+                        
+                        {% if ultimo_envio_hsm %}
+                        <button id="btnEnviarAtual" class="btn btn-primary btn-lg">
+                            <i data-feather="repeat"></i>
+                            Reenviar HSM
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {% if ultimo_envio_hsm %}
+                    <!-- Configuração de reenvio -->
+                    <div style="background: rgba(51, 160, 255, 0.1); border: 1px solid rgba(51, 160, 255, 0.3); border-radius: var(--radius-md); padding: var(--space-lg);">
+                        <h4 style="color: var(--accent-primary); margin-bottom: var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">
+                            <i data-feather="repeat"></i>
+                            Configuração para Reenvio
+                        </h4>
+                        
+                        <div class="metrics-grid" style="margin-bottom: var(--space-md);">
+                            <div>
+                                <strong style="color: var(--text-primary);">Template HSM:</strong><br>
+                                <span style="color: var(--text-tertiary);">{{ ultimo_envio_hsm.hsm_template.nome }}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-primary);">API Matrix:</strong><br>
+                                <span style="color: var(--text-tertiary);">{{ ultimo_envio_hsm.matrix_api_config.nome }}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-primary);">Último Envio:</strong><br>
+                                <span style="color: var(--text-tertiary);">{{ ultimo_envio_hsm.data_criacao|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--text-primary);">Resultados:</strong><br>
+                                <span style="color: var(--text-tertiary);">{{ ultimo_envio_hsm.total_enviados|default:"0" }} enviados</span>
+                            </div>
+                        </div>
+                        
+                        {% if ultimo_envio_hsm.configuracao_variaveis %}
+                        <div>
+                            <strong style="color: var(--text-primary); margin-bottom: var(--space-sm); display: block;">Variáveis Mapeadas:</strong>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-xs);">
+                                {% for var_hsm, campo_cliente in ultimo_envio_hsm.configuracao_variaveis.items %}
+                                <div style="background: rgba(0,0,0,0.2); padding: var(--space-xs); border-radius: var(--radius-sm); font-family: var(--font-family-mono); font-size: var(--font-size-xs);">
+                                    <code style="color: var(--accent-warning);">{{ '{' }}{{ '{' }}{{ var_hsm }}{{ '}' }}{{ '}' }}</code>
+                                    ← <span style="color: var(--text-tertiary);">{{ campo_cliente }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Tabela de resultados -->
+            <div class="card slide-up">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i data-feather="list"></i>
+                        Resultados Detalhados
+                    </h2>
+                    <span style="color: var(--text-tertiary);">{{ total_consultas }} registros</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Status</th>
+                                    <th>Data</th>
+                                    <th>Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consulta in page_obj %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'detalhes_cliente' consulta.cliente.id %}" style="color: var(--text-secondary); text-decoration: none;">
+                                            <strong>{{ consulta.cliente.nome_razaosocial|default:"N/A" }}</strong><br>
+                                            <small style="color: var(--text-muted);">Cód: {{ consulta.cliente.codigo_cliente }}</small>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if consulta.sucesso_api %}
+                                            <span style="display: flex; align-items: center; gap: var(--space-xs); color: var(--accent-success);">
+                                                <i data-feather="check-circle" style="width: 16px; height: 16px;"></i> Sucesso
+                                            </span>
+                                        {% else %}
+                                            <span style="display: flex; align-items: center; gap: var(--space-xs); color: var(--accent-danger);">
+                                                <i data-feather="x-circle" style="width: 16px; height: 16px;"></i> Erro
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="color: var(--text-tertiary);">{{ consulta.data_consulta|date:"d/m/Y H:i:s" }}</td>
+                                    <td>
+                                        {% if not consulta.sucesso_api and consulta.erro_api %}
+                                            <span style="font-family: var(--font-family-mono); font-size: var(--font-size-xs); color: var(--accent-danger);">{{ consulta.erro_api }}</span>
+                                        {% else %}
+                                            <span style="color: var(--text-muted);">Dados processados com sucesso</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: var(--space-2xl); color: var(--text-muted);">
+                                        Nenhum resultado para exibir ainda.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if page_obj.has_other_pages %}
+                    <div class="pagination" style="margin-top: var(--space-lg);">
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">
+                                <i data-feather="arrow-left"></i>
+                            </a>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="btn btn-primary btn-sm">{{ num }}</span>
+                            {% else %}
+                                <a href="?page={{ num }}" class="btn btn-outline btn-sm">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">
+                                <i data-feather="arrow-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar de ações -->
+        <aside class="actions-sidebar">
+            <!-- Ações de controle -->
+            <div class="action-card">
+                <div class="action-card-header">
+                    <i data-feather="sliders"></i>
+                    <span class="action-card-title">Ações</span>
+                </div>
+                
+                {% if execucao.status == 'executando' or execucao.status == 'pendente' %}
+                <div class="action-group">
+                    <div class="action-group-label">Controle da Execução</div>
+                    <button id="btn-cancelar" class="btn btn-danger btn-full" onclick="cancelarProcessamento()">
+                        <i data-feather="x-circle"></i>
+                        Cancelar Execução
+                    </button>
+                </div>
+                {% endif %}
+                
+                {% if execucao.status == 'concluida' or execucao.status == 'erro' %}
+                <div class="action-group">
+                    <div class="action-group-label">Controle da Execução</div>
+                    <button id="btn-reiniciar" class="btn btn-warning btn-full" onclick="reiniciarProcessamento()">
+                        <i data-feather="refresh-cw"></i>
+                        Reiniciar
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- Exportações -->
+                <div class="action-group">
+                    <div class="action-group-label">Exportar Dados</div>
+                    
+                    <a href="{% url 'exportar_resultados_csv' execucao.id %}" class="btn btn-success btn-full export-btn">
+                        <i data-feather="check-circle"></i>
+                        <div>
+                            <div class="export-btn-title">Sucessos</div>
+                            <div class="export-btn-description">Apenas válidos</div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'exportar_resultados_csv' execucao.id %}?incluir_erros=true" class="btn btn-primary btn-full export-btn">
+                        <i data-feather="database"></i>
+                        <div>
+                            <div class="export-btn-title">Completo</div>
+                            <div class="export-btn-description">Sucessos + Erros</div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'exportar_erros_csv' execucao.id %}" class="btn btn-danger btn-full export-btn">
+                        <i data-feather="alert-circle"></i>
+                        <div>
+                            <div class="export-btn-title">Erros</div>
+                            <div class="export-btn-description">Apenas falhas</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </aside>
+    </main>
+</div>
+
+
+
+
+<script>
+    // Inicializa os ícones
+    feather.replace();
+
+    // Variável global para controlar o polling
+    window.statusPollingInterval = null;
+
+    // Lógica para atualização em tempo real
+    document.addEventListener('DOMContentLoaded', function() {
+        const status = "{{ execucao.status }}";
+        const execucaoId = "{{ execucao.id }}";
+        
+        // Se a execução não está finalizada, inicia o polling
+        if (status === 'executando' || status === 'pendente') {
+            window.statusPollingInterval = setInterval(atualizarStatus, 3000); // Verifica a cada 3 segundos
+
+            function atualizarStatus() {
+                fetch(`{% url 'status_execucao_ajax' execucao_id=execucao.id %}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Atualiza os cards de estatísticas
+                        document.getElementById('total-sql').textContent = data.total_registros_sql || '0';
+                        document.getElementById('total-api').textContent = data.total_consultados_api || '0';
+                        document.getElementById('total-success').textContent = data.total_consultados_api || '0';
+                        document.getElementById('total-error').textContent = data.total_erros || '0';
+
+                        // Atualiza o status badge
+                        const statusBadge = document.getElementById('status-badge');
+                        if (statusBadge) {
+                            statusBadge.className = `status-badge status-${data.status}`;
+                            const statusDisplayMap = {
+                                'pendente': 'Pendente',
+                                'executando': 'Executando',
+                                'concluida': 'Concluída',
+                                'erro': 'Erro',
+                                'cancelada': 'Cancelada'
+                            };
+                            statusBadge.textContent = statusDisplayMap[data.status] || data.status;
+                        }
+
+                        // Atualiza o log
+                        const logContent = document.getElementById('log-content');
+                        if(logContent) logContent.textContent = data.log_execucao;
+
+                        // Atualiza a barra de progresso
+                        const progressBar = document.getElementById('progress-bar');
+                        const progressPercent = document.getElementById('progress-percent');
+                        if(progressBar && data.total_registros_sql > 0) {
+                            const totalConsultas = (data.total_consultados_api || 0) + (data.total_erros || 0);
+                            const percent = Math.round((totalConsultas / data.total_registros_sql) * 100);
+                            progressBar.style.width = percent + '%';
+                            progressPercent.textContent = percent + '%';
+                        }
+                        
+                        // Verifica se a execução terminou
+                        if (data.status === 'concluida' || data.status === 'erro' || data.status === 'cancelada') {
+                            clearInterval(window.statusPollingInterval); // Para de verificar
+                            window.statusPollingInterval = null;
+                            // Recarrega a página para exibir o estado final completo (incluindo paginação e resultados)
+                            setTimeout(() => window.location.reload(), 1000); // Pequeno delay para mostrar o status final
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar status:', error);
+                        if (window.statusPollingInterval) {
+                            clearInterval(window.statusPollingInterval); // Para em caso de erro de rede
+                            window.statusPollingInterval = null;
+                        }
+                    });
+            }
+
+            // Chama uma vez no início para não esperar os 3 primeiros segundos
+            atualizarStatus();
+        }
+    });
+
+    // Função para cancelar o processamento
+    function cancelarProcessamento() {
+        if (!confirm('Tem certeza que deseja cancelar o processamento? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+        
+        // Desabilita o botão para evitar cliques múltiplos
+        const btnCancelar = document.getElementById('btn-cancelar');
+        if (btnCancelar) {
+            btnCancelar.disabled = true;
+            btnCancelar.innerHTML = '<i data-feather="loader"></i> Cancelando...';
+            feather.replace();
+        }
+        
+        fetch(`{% url 'cancelar_processamento' execucao_id=execucao.id %}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Para qualquer polling ativo
+                if (window.statusPollingInterval) {
+                    clearInterval(window.statusPollingInterval);
+                }
+                // Recarrega a página para mostrar o novo estado
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erro ao cancelar processamento');
+                // Reabilita o botão em caso de erro
+                if (btnCancelar) {
+                    btnCancelar.disabled = false;
+                    btnCancelar.innerHTML = '<i data-feather="x-circle"></i> Cancelar';
+                    feather.replace();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao cancelar processamento');
+            // Reabilita o botão em caso de erro
+            if (btnCancelar) {
+                btnCancelar.disabled = false;
+                btnCancelar.innerHTML = '<i data-feather="x-circle"></i> Cancelar';
+                feather.replace();
+            }
+        });
+    }
+
+    // Função para reiniciar o processamento
+    function reiniciarProcessamento() {
+        if (!confirm('Tem certeza que deseja reiniciar o processamento? Isso irá apagar todos os resultados atuais e começar do zero.')) {
+            return;
+        }
+        
+        // Desabilita o botão para evitar cliques múltiplos
+        const btnReiniciar = document.getElementById('btn-reiniciar');
+        if (btnReiniciar) {
+            btnReiniciar.disabled = true;
+            btnReiniciar.innerHTML = '<i data-feather="loader"></i> Reiniciando...';
+            feather.replace();
+        }
+        
+        fetch(`{% url 'reiniciar_processamento' execucao_id=execucao.id %}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Recarrega a página para mostrar o novo estado
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erro ao reiniciar processamento');
+                // Reabilita o botão em caso de erro
+                if (btnReiniciar) {
+                    btnReiniciar.disabled = false;
+                    btnReiniciar.innerHTML = '<i data-feather="refresh-cw"></i> Reiniciar';
+                    feather.replace();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao reiniciar processamento');
+            // Reabilita o botão em caso de erro
+            if (btnReiniciar) {
+                btnReiniciar.disabled = false;
+                btnReiniciar.innerHTML = '<i data-feather="refresh-cw"></i> Reiniciar';
+                feather.replace();
+            }
+        });
+    }
+
+    // Função auxiliar para obter o token CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Função para envio HSM com configurações atuais
+    const btnEnviarAtual = document.getElementById('btnEnviarAtual');
+    if (btnEnviarAtual) {
+        btnEnviarAtual.addEventListener('click', function() {
+            // Solicita apenas o título do novo envio
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+            const titulo = prompt('🔄 Reenvio com Configuração Anterior\n\nDigite o título para este novo envio HSM:', 'Reenvio HSM - ' + dataFormatada);
+            
+            if (!titulo) {
+                return; // Usuário cancelou
+            }
+            
+            if (titulo.trim().length < 3) {
+                alert('⚠️ O título deve ter pelo menos 3 caracteres.');
+                return;
+            }
+            
+            // Confirma o envio
+            if (!confirm('🔄 CONFIRMAR REENVIO HSM\n\nTodas as configurações do último envio serão mantidas.\n\nConfirma o reenvio?')) {
+                return;
+            }
+            
+            // Desabilita o botão
+            const btn = this;
+            btn.disabled = true;
+            btn.classList.add('btn-loading');
+            btn.innerHTML = '<i data-feather="loader"></i> Enviando...';
+            feather.replace();
+            
+            // Cria FormData
+            const formData = new FormData();
+            formData.append('titulo', titulo.trim());
+            
+            // Envia requisição
+            fetch('{% url "enviar_hsm_configuracao_atual" execucao.id %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    // Redireciona para a página de detalhes do envio
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.message || 'Erro ao iniciar envio HSM');
+                    // Reabilita o botão
+                    btn.disabled = false;
+                    btn.classList.remove('btn-loading');
+                    btn.innerHTML = '<i data-feather="repeat"></i> Reenviar HSM';
+                    feather.replace();
+                }
+            })
+            .catch(error => {
+                alert('Erro ao processar solicitação: ' + error.message);
+                // Reabilita o botão
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+                btn.innerHTML = '<i data-feather="repeat"></i> Reenviar HSM';
+                feather.replace();
+            });
+        });
+    }
+</script>
+
+</body>
+</html>

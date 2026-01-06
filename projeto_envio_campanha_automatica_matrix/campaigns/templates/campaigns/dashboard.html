@@ -1,0 +1,120 @@
+{% extends 'campaigns/base.html' %}
+
+{% block title %}Dashboard - Automação de Campanhas{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="stats">
+    <div class="stat-card">
+        <h4>📊 Total de Campanhas</h4>
+        <div class="number">{{ total_campaigns }}</div>
+    </div>
+
+    <div class="stat-card">
+        <h4>✅ Campanhas Ativas</h4>
+        <div class="number">{{ active_campaigns }}</div>
+    </div>
+
+    <div class="stat-card">
+        <h4>🔄 Execuções em Andamento</h4>
+        <div class="number">{{ running_executions.count }}</div>
+    </div>
+</div>
+
+{% if running_executions %}
+<div class="card">
+    <h3>🔄 Execuções em Andamento</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Campanha</th>
+                <th>Status</th>
+                <th>Iniciado em</th>
+                <th>Duração</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for execution in running_executions %}
+            <tr>
+                <td><strong>{{ execution.campaign.name }}</strong></td>
+                <td>
+                    <span class="badge badge-running">
+                        🔄 {{ execution.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ execution.started_at|date:"d/m/Y H:i" }}</td>
+                <td><strong>{{ execution.duration_str }}</strong></td>
+                <td>
+                    <a href="{% url 'execution_detail' execution.id %}" class="btn btn-secondary">Ver Detalhes</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>📜 Execuções Recentes</h3>
+    {% if recent_executions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Campanha</th>
+                <th>Status</th>
+                <th>Registros</th>
+                <th>Iniciado em</th>
+                <th>Duração</th>
+                <th>Resultado</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for execution in recent_executions %}
+            <tr>
+                <td><strong>{{ execution.campaign.name }}</strong></td>
+                <td>
+                    {% if execution.status == 'completed' %}
+                    <span class="badge badge-success">✓ {{ execution.get_status_display }}</span>
+                    {% elif execution.status == 'failed' %}
+                    <span class="badge badge-danger">✗ {{ execution.get_status_display }}</span>
+                    {% elif execution.status == 'timeout' %}
+                    <span class="badge badge-warning">⏱ {{ execution.get_status_display }}</span>
+                    {% else %}
+                    <span class="badge badge-info">{{ execution.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ execution.total_records|default:"0" }}</td>
+                <td>{{ execution.started_at|date:"d/m/Y H:i" }}</td>
+                <td>{{ execution.duration_str }}</td>
+                <td style="text-align: center; font-size: 1.25rem;">
+                    {% if execution.success %}
+                    <span style="color: var(--success);" title="Sucesso">✓</span>
+                    {% elif execution.status in 'failed,timeout' %}
+                    <span style="color: var(--danger);" title="Falhou">✗</span>
+                    {% else %}
+                    <span style="color: var(--gray-400);" title="Em andamento">○</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'execution_detail' execution.id %}" class="btn btn-secondary">Ver Detalhes</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <p style="font-size: 1.125rem;">Nenhuma execução encontrada</p>
+        <p style="margin-top: 8px;">Execute uma campanha para começar</p>
+    </div>
+    {% endif %}
+</div>
+
+<div style="margin-top: 32px;">
+    <a href="{% url 'campaign_list' %}" class="btn btn-primary">Ver Todas as Campanhas →</a>
+</div>
+{% endblock %}

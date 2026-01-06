@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurar {{ campanha.nome }}{% endblock %}
+
+{% block page_title %}⚙️ Configurar Campanha{% endblock %}
+{% block page_subtitle %}{{ campanha.nome }}{% endblock %}
+
+{% block content %}
+<form method="post" class="fade-in">
+    {% csrf_token %}
+    
+    <!-- Informações Básicas -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="edit" style="width: 18px; height: 18px;"></i>
+                Informações Básicas
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div class="grid-modern grid-2">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Nome da Campanha
+                    </label>
+                    <input type="text" name="nome" value="{{ campanha.nome }}" 
+                           style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Status
+                    </label>
+                    <select name="status" 
+                            style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if campanha.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: var(--space-lg);">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Descrição
+                </label>
+                <textarea name="descricao" rows="3" 
+                          style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary); resize: vertical;">{{ campanha.descricao }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configurações Atuais -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="info" style="width: 18px; height: 18px;"></i>
+                Configurações Atuais
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div class="grid-modern grid-2">
+                <div>
+                    <strong style="color: var(--text-primary);">Template de Email:</strong>
+                    <div style="color: var(--text-secondary); margin-top: var(--space-xs);">
+                        <a href="{% url 'emails:visualizar_template' campanha.template_email.id %}" style="color: var(--accent-primary); text-decoration: none;">
+                            {{ campanha.template_email.nome }}
+                        </a>
+                        <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">
+                            {{ campanha.template_email.get_tipo_display }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <strong style="color: var(--text-primary);">Servidor SMTP:</strong>
+                    <div style="color: var(--text-secondary); margin-top: var(--space-xs);">
+                        {{ campanha.configuracao_servidor.nome }}
+                        <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">
+                            {{ campanha.configuracao_servidor.servidor_smtp }}:{{ campanha.configuracao_servidor.porta }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if campanha.template_sql %}
+            <div style="margin-top: var(--space-lg);">
+                <strong style="color: var(--text-primary);">Template SQL:</strong>
+                <div style="color: var(--text-secondary); margin-top: var(--space-xs);">
+                    {{ campanha.template_sql.titulo }}
+                    {% if campanha.template_sql.descricao %}
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">
+                        {{ campanha.template_sql.descricao|truncatechars:100 }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if campanha.consulta_execucao %}
+            <div style="margin-top: var(--space-lg);">
+                <strong style="color: var(--text-primary);">Execução Vinculada:</strong>
+                <div style="color: var(--text-secondary); margin-top: var(--space-xs);">
+                    {{ campanha.consulta_execucao.titulo }}
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">
+                        {{ campanha.consulta_execucao.total_consultados_api }} clientes - {{ campanha.consulta_execucao.data_fim|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Agendamento -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="calendar" style="width: 18px; height: 18px;"></i>
+                Agendamento
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Tipo de Agendamento
+                    </label>
+                    <div style="color: var(--text-primary); padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-secondary); border-radius: var(--radius-md);">
+                        {{ campanha.get_tipo_agendamento_display }}
+                    </div>
+                </div>
+                
+                {% if campanha.data_agendamento %}
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Data de Agendamento
+                    </label>
+                    <div style="color: var(--text-primary); padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-secondary); border-radius: var(--radius-md);">
+                        {{ campanha.data_agendamento|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if campanha.proxima_execucao %}
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Próxima Execução
+                    </label>
+                    <div style="color: var(--accent-primary); padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-secondary); border-radius: var(--radius-md);">
+                        {{ campanha.proxima_execucao|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Configurações Avançadas -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="settings" style="width: 18px; height: 18px;"></i>
+                Configurações Avançadas
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-lg);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Limite de Envios por Execução
+                    </label>
+                    <input type="number" name="limite_envios_por_execucao" value="{{ campanha.limite_envios_por_execucao }}" min="0"
+                           style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                        0 = sem limite
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Intervalo Entre Envios (segundos)
+                    </label>
+                    <input type="number" name="intervalo_entre_envios" value="{{ campanha.intervalo_entre_envios }}" min="0"
+                           style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                        0 = sem pausa
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Filtros SQL Adicionais
+                </label>
+                <textarea name="filtros_sql_adicionais" rows="4" 
+                          placeholder="Ex: AND vencimento_fatura < CURRENT_DATE"
+                          style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary); font-family: var(--font-family-mono); font-size: var(--font-size-sm);">{{ campanha.filtros_sql_adicionais }}</textarea>
+                <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                    Cláusulas WHERE adicionais para filtrar os resultados da consulta SQL
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status e Estatísticas -->
+    {% if campanha.total_enviados > 0 %}
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="bar-chart" style="width: 18px; height: 18px;"></i>
+                Estatísticas
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div class="grid-modern grid-5">
+                <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                        {{ campanha.total_destinatarios }}
+                    </div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Destinatários</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--accent-primary);">
+                        {{ campanha.total_enviados }}
+                    </div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Enviados</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--accent-success);">
+                        {{ campanha.total_sucessos }}
+                    </div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Sucessos</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--accent-danger);">
+                        {{ campanha.total_erros }}
+                    </div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Erros</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--accent-warning);">
+                        {{ campanha.total_pendentes }}
+                    </div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Pendentes</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Ações -->
+    <div style="margin-top: var(--space-xl); text-align: right;">
+        <a href="{% url 'emails:detalhe_campanha' campanha.id %}" class="btn-modern btn-modern-outline" style="margin-right: var(--space-md);">
+            <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+            Voltar
+        </a>
+        
+        {% if campanha.status in 'executando,agendada' %}
+        <button type="button" onclick="cancelarCampanha({{ campanha.id }})" class="btn-modern btn-modern-danger" style="margin-right: var(--space-md);">
+            <i data-feather="x-circle" style="width: 14px; height: 14px;"></i>
+            Cancelar Campanha
+        </button>
+        {% endif %}
+        
+        <button type="submit" class="btn-modern btn-modern-success">
+            <i data-feather="save" style="width: 14px; height: 14px;"></i>
+            Salvar Configurações
+        </button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cancelarCampanha(campanhaId) {
+    if (!confirm('Tem certeza que deseja cancelar esta campanha? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    fetch(`/emails/campanhas/${campanhaId}/cancelar/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => {
+                window.location.href = '{% url "emails:detalhe_campanha" campanha.id %}';
+            }, 1000);
+        } else {
+            showAlert('error', data.error || 'Erro ao cancelar campanha');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Erro na comunicação com o servidor');
+    });
+}
+
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const limiteEnvios = document.querySelector('input[name="limite_envios_por_execucao"]').value;
+    const intervaloEnvios = document.querySelector('input[name="intervalo_entre_envios"]').value;
+    
+    if (limiteEnvios && parseInt(limiteEnvios) < 0) {
+        e.preventDefault();
+        showAlert('error', 'Limite de envios deve ser maior ou igual a 0');
+        return;
+    }
+    
+    if (intervaloEnvios && parseInt(intervaloEnvios) < 0) {
+        e.preventDefault();
+        showAlert('error', 'Intervalo entre envios deve ser maior ou igual a 0');
+        return;
+    }
+});
+</script>
+{% endblock %}

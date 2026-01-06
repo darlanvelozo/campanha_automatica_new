@@ -1,0 +1,458 @@
+{% extends 'base.html' %}
+
+{% block title %}Envios HSM - Sistema de Campanhas{% endblock %}
+
+{% block page_title %}Envios HSM{% endblock %}
+{% block page_subtitle %}Monitore e gerencie todos os envios de mensagens HSM via Matrix{% endblock %}
+
+{% block navbar_actions %}
+<a href="{% url 'listar_execucoes' %}" class="action-button">
+    <i data-feather="list" style="width: 14px; height: 14px;"></i>
+    Execuções
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Envios HSM List */
+    .envios-list {
+        padding: 0;
+    }
+
+    .envio-item {
+        display: block;
+        padding: 25px;
+        border-bottom: 1px solid var(--border-color);
+        color: inherit;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .envio-item:last-child {
+        border-bottom: none;
+    }
+
+    .envio-item:hover {
+        background: rgba(139, 148, 158, 0.05);
+    }
+
+    .envio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .envio-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .envio-title h3 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .envio-meta {
+        display: flex;
+        gap: 20px;
+        color: var(--text-secondary-color);
+        font-size: 0.9rem;
+        flex-wrap: wrap;
+    }
+
+    .envio-meta span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .envio-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 10px;
+        background: rgba(139, 148, 158, 0.05);
+        border-radius: 6px;
+    }
+
+    .stat-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-color);
+        display: block;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary-color);
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-pendente {
+        background: rgba(139, 148, 158, 0.2);
+        color: var(--text-secondary-color);
+        border: 1px solid rgba(139, 148, 158, 0.4);
+    }
+
+    .status-enviando {
+        background: rgba(255, 171, 0, 0.2);
+        color: var(--warning-color);
+        border: 1px solid rgba(255, 171, 0, 0.4);
+    }
+
+    .status-concluido {
+        background: rgba(40, 167, 69, 0.2);
+        color: var(--success-color);
+        border: 1px solid rgba(40, 167, 69, 0.4);
+    }
+
+    .status-erro, .status-cancelado {
+        background: rgba(248, 81, 73, 0.2);
+        color: var(--error-color);
+        border: 1px solid rgba(248, 81, 73, 0.4);
+    }
+
+    /* Progress Bar */
+    .progress-container {
+        margin-top: 10px;
+        background: rgba(139, 148, 158, 0.1);
+        border-radius: 10px;
+        height: 8px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-accent-color), #58a6ff);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+        position: relative;
+    }
+
+    .progress-bar.success {
+        background: linear-gradient(90deg, var(--success-color), #20c997);
+    }
+
+    .progress-bar.error {
+        background: linear-gradient(90deg, var(--error-color), #ff6b6b);
+    }
+
+    .progress-text {
+        font-size: 0.8rem;
+        color: var(--text-secondary-color);
+        margin-top: 5px;
+        text-align: center;
+    }
+
+    /* Template Info */
+    .template-info {
+        background: rgba(51, 160, 255, 0.05);
+        border: 1px solid rgba(51, 160, 255, 0.2);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-top: 10px;
+        font-size: 0.85rem;
+    }
+
+    .template-info strong {
+        color: var(--primary-accent-color);
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        padding: 25px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .pagination a, .pagination span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        text-decoration: none;
+        color: var(--text-color);
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .pagination a:hover {
+        background: rgba(139, 148, 158, 0.2);
+    }
+
+    .pagination .current {
+        background: var(--primary-accent-color);
+        color: white;
+        font-weight: 600;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: var(--text-secondary-color);
+    }
+
+    .empty-state .icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .empty-state h3 {
+        font-size: 1.3rem;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+
+    .empty-state p {
+        font-size: 1rem;
+        margin-bottom: 20px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .envio-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .envio-meta {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .envio-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .envio-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
+<div class="card envios-list">
+    {% for envio in page_obj %}
+        <a href="{% url 'detalhe_envio_hsm' envio.id %}" class="envio-item">
+            <div class="envio-header">
+                <div>
+                    <div class="envio-title">
+                        <i data-feather="send" style="width: 20px; height: 20px; color: var(--primary-accent-color);"></i>
+                        <h3>{{ envio.titulo }}</h3>
+                    </div>
+                    
+                    <div class="envio-meta">
+                        <span>
+                            <i data-feather="user" style="width: 14px; height: 14px;"></i>
+                            {{ envio.consulta_execucao.titulo }}
+                        </span>
+                        <span>
+                            <i data-feather="calendar" style="width: 14px; height: 14px;"></i>
+                            {{ envio.data_criacao|date:"d/m/Y H:i" }}
+                        </span>
+                        <span>
+                            <i data-feather="message-square" style="width: 14px; height: 14px;"></i>
+                            {{ envio.hsm_template.nome }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="status-badge status-{{ envio.status_envio }}">
+                        {% if envio.status_envio == 'enviando' %}
+                            <div class="loading"></div>
+                        {% elif envio.status_envio == 'concluido' %}
+                            <i data-feather="check-circle" style="width: 12px; height: 12px;"></i>
+                        {% elif envio.status_envio == 'erro' %}
+                            <i data-feather="x-circle" style="width: 12px; height: 12px;"></i>
+                        {% elif envio.status_envio == 'cancelado' %}
+                            <i data-feather="x-octagon" style="width: 12px; height: 12px;"></i>
+                        {% else %}
+                            <i data-feather="clock" style="width: 12px; height: 12px;"></i>
+                        {% endif %}
+                        {{ envio.get_status_envio_display }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            {% if envio.total_clientes > 0 %}
+            <div class="progress-container">
+                <div class="progress-bar {% if envio.status_envio == 'concluido' %}success{% elif envio.status_envio == 'erro' %}error{% endif %}" 
+                     style="width: {{ envio.get_progresso_percentual }}%"></div>
+            </div>
+            <div class="progress-text">
+                {{ envio.get_progresso_percentual }}% completo
+            </div>
+            {% endif %}
+            
+            <!-- Stats -->
+            <div class="envio-stats">
+                <div class="stat-item">
+                    <span class="stat-value">{{ envio.total_clientes|default:0 }}</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" style="color: var(--success-color);">{{ envio.total_enviados|default:0 }}</span>
+                    <span class="stat-label">Enviados</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" style="color: var(--error-color);">{{ envio.total_erros|default:0 }}</span>
+                    <span class="stat-label">Erros</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" style="color: var(--warning-color);">{{ envio.total_pendentes|default:0 }}</span>
+                    <span class="stat-label">Pendentes</span>
+                </div>
+            </div>
+            
+            <!-- Actions (when there are pending items) -->
+            {% if envio.total_pendentes > 0 and envio.status_envio not in 'pendente,enviando' %}
+            <div class="envio-actions" style="margin-top: 15px; text-align: center;" onclick="event.preventDefault(); event.stopPropagation();">
+                <button onclick="reiniciarPendentes({{ envio.id }})" class="btn" style="background: linear-gradient(135deg, var(--warning-color), #ffcc00); color: #000; border: none; font-size: 0.85rem; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i data-feather="rotate-cw" style="width: 14px; height: 14px;"></i> Reiniciar {{ envio.total_pendentes }} Pendente{{ envio.total_pendentes|pluralize }}
+                </button>
+            </div>
+            {% endif %}
+            
+            <!-- Template Info -->
+            <div class="template-info">
+                <strong>Matrix API:</strong> {{ envio.matrix_api_config.nome }} | 
+                <strong>HSM ID:</strong> {{ envio.hsm_template.hsm_id }}
+                {% if envio.hsm_template_contingencia %}
+                    | <strong>Contingência:</strong> {{ envio.hsm_template_contingencia.nome }}
+                {% endif %}
+            </div>
+        </a>
+    {% empty %}
+        <div class="empty-state">
+            <i data-feather="send" class="icon"></i>
+            <h3>Nenhum envio HSM encontrado</h3>
+            <p>Ainda não foram realizados envios de HSM no sistema.</p>
+            <a href="{% url 'listar_execucoes' %}" class="btn btn-primary">
+                <i data-feather="plus" style="width: 16px; height: 16px;"></i>
+                Ver Execuções
+            </a>
+        </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}">
+                <i data-feather="arrow-left" style="width: 16px; height: 16px;"></i>
+            </a>
+        {% else %}
+            <span style="opacity: 0.3;">
+                <i data-feather="arrow-left" style="width: 16px; height: 16px;"></i>
+            </span>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <span class="current">{{ num }}</span>
+            {% else %}
+                <a href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">
+                <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
+            </a>
+        {% else %}
+            <span style="opacity: 0.3;">
+                <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
+            </span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Função para reiniciar envio apenas para clientes pendentes
+    async function reiniciarPendentes(envioId) {
+        if (!confirm('Tem certeza que deseja reiniciar o envio apenas para os clientes pendentes?')) {
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('envio_id', envioId);
+
+            const response = await fetch('/reiniciar-envio-hsm/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showToast('✅ ' + result.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('❌ Erro ao reiniciar envio: ' + result.message, 'error');
+            }
+
+        } catch (error) {
+            showToast('❌ Erro ao processar solicitação: ' + error.message, 'error');
+        }
+    }
+
+    // Função auxiliar para obter CSRF token
+    function getCsrfToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
+            }
+        }
+        return '';
+    }
+</script>
+{% endblock %}

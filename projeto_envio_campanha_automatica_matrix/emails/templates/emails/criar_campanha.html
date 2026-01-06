@@ -1,0 +1,742 @@
+{% extends 'base.html' %}
+
+{% block title %}Nova Campanha - Emails{% endblock %}
+
+{% block page_title %}📧 Nova Campanha de Email{% endblock %}
+{% block page_subtitle %}Crie uma nova campanha de envio de emails{% endblock %}
+
+{% block content %}
+<form method="post" class="fade-in">
+    {% csrf_token %}
+    
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="settings" style="width: 18px; height: 18px;"></i>
+                Configurações Básicas
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div class="grid-modern grid-2">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Nome da Campanha *
+                    </label>
+                    <input type="text" name="nome" required 
+                           placeholder="Ex: Lembrete de Faturas Janeiro 2024"
+                           style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Template de Email *
+                    </label>
+                    <select name="template_email" required 
+                            style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        <option value="">Selecione um template</option>
+                        {% for template in templates_email %}
+                        <option value="{{ template.id }}">{{ template.nome }} ({{ template.get_tipo_display }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: var(--space-lg);">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Descrição
+                </label>
+                <textarea name="descricao" rows="3" 
+                          placeholder="Descrição opcional da campanha..."
+                          style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary); resize: vertical;"></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="server" style="width: 18px; height: 18px;"></i>
+                Configuração de Envio
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div>
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Servidor SMTP *
+                </label>
+                <select name="configuracao_servidor" required 
+                        style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    <option value="">Selecione um servidor SMTP</option>
+                    {% for config in configuracoes_servidor %}
+                    <option value="{{ config.id }}">{{ config.nome }} ({{ config.servidor_smtp }})</option>
+                    {% endfor %}
+                </select>
+                {% if not configuracoes_servidor %}
+                <div style="margin-top: var(--space-sm); padding: var(--space-sm); background: rgba(255, 171, 0, 0.1); border: 1px solid rgba(255, 171, 0, 0.3); border-radius: var(--radius-md); font-size: var(--font-size-sm); color: var(--accent-warning);">
+                    <i data-feather="alert-triangle" style="width: 14px; height: 14px;"></i>
+                    Nenhuma configuração SMTP encontrada. <a href="/admin/emails/configuracaoservidoremail/add/" target="_blank" style="color: inherit; text-decoration: underline;">Criar no admin</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="database" style="width: 18px; height: 18px;"></i>
+                Fonte de Dados <span style="color: var(--accent-danger);">*</span>
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="margin-bottom: var(--space-lg);">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-sm);">
+                    Escolha a fonte dos dados dos clientes <span style="color: var(--accent-danger);">*</span>
+                </label>
+                
+                <!-- CARDS CLICÁVEIS COM OPÇÕES INTEGRADAS -->
+                <div style="display: grid; gap: 20px; grid-template-columns: 1fr 1fr;">
+                    
+                    <!-- CARD SQL -->
+                    <div id="card-sql" style="border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s ease; background: #ffffff;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <input type="radio" name="fonte_dados" value="sql" id="radio-sql" style="margin-right: 12px; transform: scale(1.2);">
+                            <div style="background: #28a745; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 14px;">
+                                SQL
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; color: #2c3e50; font-size: 16px; font-weight: 600;">Template SQL</h4>
+                                <p style="margin: 0; color: #6c757d; font-size: 12px;">Executar consulta personalizada</p>
+                            </div>
+                        </div>
+                        
+                        <!-- OPÇÕES SQL (SEMPRE VISÍVEIS QUANDO SELECIONADO) -->
+                        <div id="opcoes-sql" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                            <label style="display: block; font-weight: 600; color: #28a745; margin-bottom: 10px; font-size: 14px;">
+                                📊 Selecione o Template SQL:
+                            </label>
+                            
+                            <select name="template_sql" style="width: 100%; padding: 10px; border: 2px solid #28a745; border-radius: 6px; background: white; color: #155724;">
+                                <option value="">Escolha um template SQL...</option>
+                                {% for template in templates_sql %}
+                                <option value="{{ template.id }}">{{ template.titulo }}</option>
+                                {% endfor %}
+                            </select>
+                            
+                            {% if templates_sql %}
+                            <div style="margin-top: 10px; font-size: 12px; color: #28a745;">
+                                ✅ {{ templates_sql|length }} template{{ templates_sql|length|pluralize:"s" }} disponível{{ templates_sql|length|pluralize:"eis" }}
+                            </div>
+                            {% else %}
+                            <div style="margin-top: 10px; font-size: 12px; color: #dc3545;">
+                                ⚠️ Nenhum template encontrado. <a href="/admin/campanhas/templatesql/" target="_blank">Criar template</a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- CARD EXECUÇÃO -->
+                    <div id="card-execucao" style="border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s ease; background: #ffffff;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <input type="radio" name="fonte_dados" value="execucao" id="radio-execucao" style="margin-right: 12px; transform: scale(1.2);">
+                            <div style="background: #0d6efd; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 12px;">
+                                EXEC
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; color: #2c3e50; font-size: 16px; font-weight: 600;">Execução Existente</h4>
+                                <p style="margin: 0; color: #6c757d; font-size: 12px;">Reutilizar dados consultados</p>
+                            </div>
+                        </div>
+                        
+                        <!-- OPÇÕES EXECUÇÃO (SEMPRE VISÍVEIS QUANDO SELECIONADO) -->
+                        <div id="opcoes-execucao" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                            <label style="display: block; font-weight: 600; color: #0d6efd; margin-bottom: 10px; font-size: 14px;">
+                                🔄 Selecione a Execução:
+                            </label>
+                            
+                            <select name="consulta_execucao" style="width: 100%; padding: 10px; border: 2px solid #0d6efd; border-radius: 6px; background: white; color: #084298;">
+                                <option value="">Escolha uma execução...</option>
+                                {% for execucao in execucoes_recentes %}
+                                <option value="{{ execucao.id }}">
+                                    {{ execucao.titulo }}
+                                    {% if execucao.data_fim %}({{ execucao.data_fim|date:"d/m/Y H:i" }}){% endif %}
+                                    {% if execucao.total_registros_sql %}- {{ execucao.total_registros_sql }} registros{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            
+                            {% if execucoes_recentes %}
+                            <div style="margin-top: 10px; font-size: 12px; color: #0d6efd;">
+                                ✅ {{ execucoes_recentes|length }} execução{{ execucoes_recentes|length|pluralize:"ões,ão" }} disponível{{ execucoes_recentes|length|pluralize:"eis" }}
+                            </div>
+                            {% else %}
+                            <div style="margin-top: 10px; font-size: 12px; color: #dc3545;">
+                                ⚠️ Nenhuma execução encontrada. Execute uma consulta primeiro.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <!-- INFORMAÇÕES SOBRE A SELEÇÃO -->
+                <div id="info-selecao" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                    <div id="info-sql" style="display: none;">
+                        <h5 style="margin: 0 0 10px 0; color: #28a745;">💡 Como funciona o Template SQL:</h5>
+                        <p style="margin: 0; font-size: 14px; color: #495057;">
+                            O SQL será executado automaticamente para buscar clientes com email válido. 
+                            Todos os campos retornados pela consulta estarão disponíveis como variáveis no template de email.
+                        </p>
+                    </div>
+                    <div id="info-execucao" style="display: none;">
+                        <h5 style="margin: 0 0 10px 0; color: #0d6efd;">💡 Como funciona a Execução Existente:</h5>
+                        <p style="margin: 0; font-size: 14px; color: #495057;">
+                            Os dados já processados desta execução serão reutilizados. 
+                            Isso é mais rápido pois não precisa executar o SQL novamente.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- CONFIGURAÇÕES SQL + API (VISÍVEL APENAS PARA SQL) -->
+                <div id="config-sql-api" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px; border-left: 4px solid #28a745;">
+                    <h4 style="margin: 0 0 20px 0; color: #28a745; font-size: 18px; font-weight: 600;">
+                        ⚙️ Configurações de Execução
+                    </h4>
+                    
+                    <div style="display: grid; gap: 20px;">
+                        <!-- Credencial do Banco -->
+                        <div>
+                            <label style="display: block; font-weight: 600; color: #495057; margin-bottom: 8px;">
+                                🗄️ Credencial do Banco de Dados:
+                            </label>
+                            <select name="credencial_banco" required style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;">
+                                <option value="">Selecione a credencial do banco...</option>
+                                {% for credencial in credenciais_banco %}
+                                <option value="{{ credencial.id }}">{{ credencial.titulo }} ({{ credencial.host }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Pular Consulta API -->
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffeaa7;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" name="pular_consulta_api" style="margin-right: 10px; transform: scale(1.2);">
+                                <div>
+                                    <strong style="color: #856404;">⚡ Pular Consulta na API</strong><br>
+                                    <small style="color: #856404;">Se marcado, usará apenas dados do SQL (mais rápido, mas sem dados da API Hubsoft)</small>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <!-- Credencial Hubsoft (CONDICIONAL) -->
+                        <div id="credencial-hubsoft-section">
+                            <label style="display: block; font-weight: 600; color: #495057; margin-bottom: 8px;">
+                                🌐 Credencial API Hubsoft:
+                            </label>
+                            <select name="credencial_hubsoft" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;">
+                                <option value="">Selecione a credencial da API...</option>
+                                {% for credencial in credenciais_hubsoft %}
+                                <option value="{{ credencial.id }}">{{ credencial.titulo }} ({{ credencial.username }})</option>
+                                {% endfor %}
+                            </select>
+                            <small style="color: #6c757d;">Obrigatório se não pular consulta na API</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- VARIÁVEIS SQL (DINÂMICO) -->
+                <div id="variaveis-sql-section" style="display: none; margin-top: 30px; padding: 20px; background: #e8f5e8; border-radius: 12px; border-left: 4px solid #28a745;">
+                    <h4 style="margin: 0 0 15px 0; color: #28a745; font-size: 18px; font-weight: 600;">
+                        📝 Variáveis do Template SQL
+                    </h4>
+                    <div id="variaveis-sql-container">
+                        <p style="color: #6c757d; font-style: italic;">Selecione um template SQL para ver as variáveis necessárias...</p>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="clock" style="width: 18px; height: 18px;"></i>
+                Execução
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="margin-bottom: var(--space-md);">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Tipo de Agendamento
+                </label>
+                <select name="tipo_agendamento" id="tipo_agendamento"
+                        style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    {% for value, label in tipo_agendamento_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div id="agendamento-options" style="margin-bottom: var(--space-md); display: none;">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Data e Hora de Execução
+                </label>
+                <input type="datetime-local" name="data_agendamento"
+                       style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+            </div>
+            
+            <!-- CONFIGURAÇÕES DE RECORRÊNCIA -->
+            <div id="recorrencia-options" style="display: none; margin-bottom: var(--space-md); padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md); border-left: 4px solid var(--accent-primary);">
+                <h4 style="margin: 0 0 var(--space-md) 0; color: var(--accent-primary); font-size: var(--font-size-md);">
+                    ⏰ Configurações de Recorrência
+                </h4>
+                
+                <!-- Configurações Diárias -->
+                <div id="config-diario" style="display: none;">
+                    <div class="grid-modern grid-2">
+                        <div>
+                            <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                                Intervalo (dias)
+                            </label>
+                            <input type="number" name="intervalo_recorrencia" value="1" min="1" max="30"
+                                   style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                            <small style="color: var(--text-secondary);">1 = todo dia, 2 = dia sim/dia não</small>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                                Hora de Execução
+                            </label>
+                            <input type="time" name="hora_execucao" value="09:00"
+                                   style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Configurações Semanais -->
+                <div id="config-semanal" style="display: none;">
+                    <div style="margin-bottom: var(--space-md);">
+                        <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-sm);">
+                            Dias da Semana
+                        </label>
+                        <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="1" style="margin-right: var(--space-xs);">
+                                Segunda
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="2" style="margin-right: var(--space-xs);">
+                                Terça
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="3" style="margin-right: var(--space-xs);">
+                                Quarta
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="4" style="margin-right: var(--space-xs);">
+                                Quinta
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="5" style="margin-right: var(--space-xs);">
+                                Sexta
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="6" style="margin-right: var(--space-xs);">
+                                Sábado
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer; padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+                                <input type="checkbox" name="dias_semana" value="0" style="margin-right: var(--space-xs);">
+                                Domingo
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                            Hora de Execução
+                        </label>
+                        <input type="time" name="hora_execucao_semanal" value="09:00"
+                               style="width: 200px; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    </div>
+                </div>
+                
+                <!-- Configurações Mensais -->
+                <div id="config-mensal" style="display: none;">
+                    <div class="grid-modern grid-2">
+                        <div>
+                            <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                                Dia do Mês
+                            </label>
+                            <input type="number" name="dia_mes_recorrencia" value="1" min="1" max="31"
+                                   style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                            <small style="color: var(--text-secondary);">Dia do mês para execução (1-31)</small>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                                Hora de Execução
+                            </label>
+                            <input type="time" name="hora_execucao_mensal" value="09:00"
+                                   style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Configurações Personalizadas -->
+                <div id="config-personalizado" style="display: none;">
+                    <div>
+                        <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                            Expressão Cron
+                        </label>
+                        <input type="text" name="expressao_cron" placeholder="0 9 * * 1"
+                               style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        <small style="color: var(--text-secondary);">Exemplo: '0 9 * * 1' = toda segunda às 9h</small>
+                    </div>
+                </div>
+                
+                <!-- Data Fim da Recorrência -->
+                <div style="margin-top: var(--space-md);">
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Data Limite (opcional)
+                    </label>
+                    <input type="datetime-local" name="data_fim_recorrencia"
+                           style="width: 300px; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    <small style="color: var(--text-secondary);">Deixe vazio para recorrência indefinida</small>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-top: var(--space-md);">
+                <input type="checkbox" name="executar_imediatamente" id="executar_imediatamente" style="margin: 0;">
+                <label for="executar_imediatamente" style="font-size: var(--font-size-sm); color: var(--text-primary); cursor: pointer;">
+                    Executar imediatamente após criar a campanha
+                </label>
+            </div>
+            
+            <div style="margin-top: var(--space-xs); padding: var(--space-sm); background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: var(--radius-md); font-size: var(--font-size-xs); color: var(--accent-warning);">
+                <i data-feather="zap" style="width: 12px; height: 12px;"></i>
+                Para campanhas recorrentes, os dados serão reprocessados a cada execução automaticamente
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ações -->
+    <div style="margin-top: var(--space-xl); text-align: right;">
+        <a href="{% url 'emails:listar_campanhas' %}" class="btn-modern btn-modern-outline" style="margin-right: var(--space-md);">
+            <i data-feather="x" style="width: 14px; height: 14px;"></i>
+            Cancelar
+        </a>
+        <button type="submit" class="btn-modern btn-modern-success">
+            <i data-feather="save" style="width: 14px; height: 14px;"></i>
+            Criar Campanha
+        </button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Animações para os dropdowns suspensos */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 500px;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 500px;
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+        max-height: 0;
+    }
+}
+
+/* Hover effects para os selects */
+.fonte-dados-option select:hover {
+    border-color: #0056b3 !important;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1) !important;
+}
+
+.fonte-dados-option select:focus {
+    outline: none !important;
+    border-color: #0056b3 !important;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2) !important;
+}
+
+/* Estilo para os radio buttons */
+input[name="fonte_dados"] {
+    transform: scale(1.2);
+}
+
+input[name="fonte_dados"]:checked + div {
+    background: rgba(13, 110, 253, 0.1) !important;
+    border-color: #0d6efd !important;
+}
+
+/* Cards clicáveis */
+#card-sql, #card-execucao {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+#card-sql:hover, #card-execucao:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+#card-sql.ativo {
+    border-color: #28a745 !important;
+    background: #f8fff9 !important;
+    box-shadow: 0 4px 16px rgba(40, 167, 69, 0.2);
+}
+
+#card-execucao.ativo {
+    border-color: #0d6efd !important;
+    background: #f8f9ff !important;
+    box-shadow: 0 4px 16px rgba(13, 110, 253, 0.2);
+}
+
+/* Animação suave para as opções */
+#opcoes-sql, #opcoes-execucao {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .grid-template-columns {
+        grid-template-columns: 1fr !important;
+    }
+    
+    #card-sql, #card-execucao {
+        padding: 15px !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+console.log('🔥 JAVASCRIPT CARREGADO - TESTE INICIAL');
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM CARREGADO - INICIANDO SISTEMA COMPLETO');
+    
+    // Elementos principais
+    var radioSQL = document.getElementById('radio-sql');
+    var radioExecucao = document.getElementById('radio-execucao');
+    var opcoesSQL = document.getElementById('opcoes-sql');
+    var opcoesExecucao = document.getElementById('opcoes-execucao');
+    var configSqlApi = document.getElementById('config-sql-api');
+    var variaveisSqlSection = document.getElementById('variaveis-sql-section');
+    var templateSqlSelect = document.querySelector('select[name="template_sql"]');
+    var pularApiCheckbox = document.querySelector('input[name="pular_consulta_api"]');
+    var credentialHubsoftSection = document.getElementById('credencial-hubsoft-section');
+    
+    console.log('🔍 ELEMENTOS ENCONTRADOS:', {
+        radioSQL: !!radioSQL,
+        radioExecucao: !!radioExecucao,
+        opcoesSQL: !!opcoesSQL,
+        opcoesExecucao: !!opcoesExecucao,
+        configSqlApi: !!configSqlApi,
+        variaveisSqlSection: !!variaveisSqlSection,
+        templateSqlSelect: !!templateSqlSelect
+    });
+    
+    function mostrarSecoes() {
+        console.log('📋 ATUALIZANDO SEÇÕES');
+        
+        // Resetar todas as seções
+        opcoesSQL.style.display = 'none';
+        opcoesExecucao.style.display = 'none';
+        configSqlApi.style.display = 'none';
+        variaveisSqlSection.style.display = 'none';
+        
+        if (radioSQL.checked) {
+            console.log('✅ SQL SELECIONADO - MOSTRANDO OPÇÕES');
+            opcoesSQL.style.display = 'block';
+            configSqlApi.style.display = 'block';
+            
+            // Se já tem template selecionado, mostrar variáveis
+            if (templateSqlSelect && templateSqlSelect.value) {
+                carregarVariaveisSQL(templateSqlSelect.value);
+            }
+            
+        } else if (radioExecucao.checked) {
+            console.log('✅ EXECUÇÃO SELECIONADA - MOSTRANDO OPÇÕES');
+            opcoesExecucao.style.display = 'block';
+        }
+        
+        // Gerenciar visibilidade da credencial Hubsoft
+        gerenciarCredentialHubsoft();
+    }
+    
+    function gerenciarCredentialHubsoft() {
+        if (pularApiCheckbox && credentialHubsoftSection) {
+            if (pularApiCheckbox.checked) {
+                credentialHubsoftSection.style.opacity = '0.5';
+                credentialHubsoftSection.style.pointerEvents = 'none';
+            } else {
+                credentialHubsoftSection.style.opacity = '1';
+                credentialHubsoftSection.style.pointerEvents = 'auto';
+            }
+        }
+    }
+    
+    function carregarVariaveisSQL(templateId) {
+        if (!templateId) {
+            variaveisSqlSection.style.display = 'none';
+            return;
+        }
+        
+        console.log('🔄 CARREGANDO VARIÁVEIS PARA TEMPLATE:', templateId);
+        
+        fetch(`/emails/api/template-sql/${templateId}/variaveis/`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('📥 VARIÁVEIS RECEBIDAS:', data);
+                
+                if (data.status === 'success' && data.variaveis) {
+                    mostrarVariaveisSQL(data.variaveis);
+                } else {
+                    console.log('ℹ️ Nenhuma variável encontrada');
+                    variaveisSqlSection.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('❌ ERRO AO CARREGAR VARIÁVEIS:', error);
+                variaveisSqlSection.style.display = 'none';
+            });
+    }
+    
+    function mostrarVariaveisSQL(variaveis) {
+        var container = document.getElementById('variaveis-sql-container');
+        
+        if (Object.keys(variaveis).length === 0) {
+            variaveisSqlSection.style.display = 'none';
+            return;
+        }
+        
+        var html = '';
+        Object.entries(variaveis).forEach(([nome, config]) => {
+            var inputType = config.tipo === 'number' ? 'number' : 
+                           config.tipo === 'date' ? 'date' : 
+                           config.tipo === 'datetime' ? 'datetime-local' : 'text';
+            
+            var required = config.obrigatorio ? 'required' : '';
+            var placeholder = config.valor_padrao || 'Digite ' + config.label.toLowerCase();
+            
+            html += '<div style="margin-bottom: 20px;">' +
+                    '<label style="display: block; font-weight: 600; color: #495057; margin-bottom: 8px;">' +
+                    config.label + (config.obrigatorio ? ' *' : '') +
+                    '</label>' +
+                    '<input type="' + inputType + '" ' +
+                           'name="var_' + nome + '" ' +
+                           'value="' + (config.valor_padrao || '') + '" ' +
+                           'placeholder="' + placeholder + '" ' +
+                           required + ' ' +
+                           'style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;">' +
+                    '<small style="color: #6c757d;">Variável: {{' + nome + '}}</small>' +
+                    '</div>';
+        });
+        
+        container.innerHTML = html;
+        variaveisSqlSection.style.display = 'block';
+        
+        console.log('✅ VARIÁVEIS SQL RENDERIZADAS');
+    }
+    
+    // Event Listeners
+    radioSQL.addEventListener('change', mostrarSecoes);
+    radioExecucao.addEventListener('change', mostrarSecoes);
+    
+    if (pularApiCheckbox) {
+        pularApiCheckbox.addEventListener('change', gerenciarCredentialHubsoft);
+    }
+    
+    if (templateSqlSelect) {
+        templateSqlSelect.addEventListener('change', function() {
+            console.log('🔄 TEMPLATE SQL MUDOU:', this.value);
+            carregarVariaveisSQL(this.value);
+        });
+    }
+    
+    // Cards clicáveis
+    document.getElementById('card-sql').addEventListener('click', function() {
+        console.log('🖱️ CARD SQL CLICADO');
+        radioSQL.checked = true;
+        mostrarSecoes();
+    });
+    
+    document.getElementById('card-execucao').addEventListener('click', function() {
+        console.log('🖱️ CARD EXECUÇÃO CLICADO');
+        radioExecucao.checked = true;
+        mostrarSecoes();
+    });
+    
+    // Gerenciar agendamento
+    var tipoAgendamentoSelect = document.getElementById('tipo_agendamento');
+    var agendamentoOptions = document.getElementById('agendamento-options');
+    var recorrenciaOptions = document.getElementById('recorrencia-options');
+    
+    function gerenciarAgendamento() {
+        var tipo = tipoAgendamentoSelect.value;
+        console.log('🕒 TIPO DE AGENDAMENTO MUDOU:', tipo);
+        
+        // Resetar visibilidade
+        agendamentoOptions.style.display = 'none';
+        recorrenciaOptions.style.display = 'none';
+        document.getElementById('config-diario').style.display = 'none';
+        document.getElementById('config-semanal').style.display = 'none';
+        document.getElementById('config-mensal').style.display = 'none';
+        document.getElementById('config-personalizado').style.display = 'none';
+        
+        if (tipo === 'unico') {
+            agendamentoOptions.style.display = 'block';
+        } else if (tipo !== '') {
+            // Para todos os tipos recorrentes
+            agendamentoOptions.style.display = 'block';
+            recorrenciaOptions.style.display = 'block';
+            
+            // Mostrar configuração específica do tipo
+            if (tipo === 'diario') {
+                document.getElementById('config-diario').style.display = 'block';
+            } else if (tipo === 'semanal') {
+                document.getElementById('config-semanal').style.display = 'block';
+            } else if (tipo === 'mensal') {
+                document.getElementById('config-mensal').style.display = 'block';
+            } else if (tipo === 'personalizado') {
+                document.getElementById('config-personalizado').style.display = 'block';
+            }
+        }
+    }
+    
+    tipoAgendamentoSelect.addEventListener('change', gerenciarAgendamento);
+    
+    // Inicialização
+    gerenciarCredentialHubsoft();
+    gerenciarAgendamento();
+    console.log('🎉 SISTEMA COMPLETO PRONTO!');
+});
+</script>
+{% endblock %}

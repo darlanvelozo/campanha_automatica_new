@@ -1,0 +1,430 @@
+{% extends 'base.html' %}
+
+{% block title %}Histórico de Execuções - Sistema de Campanhas{% endblock %}
+
+{% block page_title %}Histórico de Execuções{% endblock %}
+{% block page_subtitle %}Visualize e gerencie todas as execuções de consultas realizadas{% endblock %}
+
+{% block navbar_actions %}
+<a href="{% url 'listar_envios_hsm' %}" class="action-button">
+    <i data-feather="send" style="width: 14px; height: 14px;"></i>
+    Envios HSM
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Layout da aplicação */
+    .app-layout {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: var(--space-lg);
+    }
+
+    .page-header {
+        margin-bottom: var(--space-xl);
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-md);
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
+    }
+
+    .breadcrumb a {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+    }
+
+    .breadcrumb a:hover {
+        color: var(--accent-primary);
+    }
+
+    .page-title-section {
+        margin-top: var(--space-md);
+    }
+
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--text-primary);
+        margin-bottom: var(--space-sm);
+    }
+
+    .page-subtitle {
+        color: var(--text-tertiary);
+        font-size: var(--font-size-lg);
+        margin: 0;
+    }
+
+    /* Grid de execuções */
+    .execution-grid {
+        display: grid;
+        gap: var(--space-md);
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    }
+
+    .execution-card-modern {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        transition: all var(--transition-normal);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .execution-card-modern::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent-primary), var(--accent-info));
+        transform: scaleX(0);
+        transition: transform var(--transition-normal);
+    }
+
+    .execution-card-modern:hover {
+        border-color: var(--accent-primary);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .execution-card-modern:hover::before {
+        transform: scaleX(1);
+    }
+
+    .execution-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: var(--space-md);
+        gap: var(--space-md);
+    }
+
+    .execution-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        flex: 1;
+    }
+
+    .execution-card-body {
+        margin-bottom: var(--space-lg);
+    }
+
+    .execution-info-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--space-sm);
+    }
+
+    .execution-info-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .execution-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: var(--space-md);
+        border-top: 1px solid var(--border-secondary);
+    }
+
+    .execution-stats-modern {
+        display: flex;
+        gap: var(--space-md);
+        flex-wrap: wrap;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        font-size: var(--font-size-xs);
+        color: var(--text-tertiary);
+        padding: var(--space-xs) var(--space-sm);
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-sm);
+    }
+
+    .stat-success {
+        color: var(--accent-success);
+        background: rgba(40, 167, 69, 0.1);
+    }
+
+    .stat-error {
+        color: var(--accent-danger);
+        background: rgba(248, 81, 73, 0.1);
+    }
+
+    /* Estado vazio */
+    .empty-state-modern {
+        text-align: center;
+        padding: var(--space-3xl) var(--space-lg);
+        color: var(--text-tertiary);
+    }
+
+    .empty-icon {
+        margin-bottom: var(--space-lg);
+    }
+
+    .empty-state-modern h3 {
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-secondary);
+        margin-bottom: var(--space-sm);
+    }
+
+    .empty-state-modern p {
+        font-size: var(--font-size-base);
+        margin-bottom: var(--space-lg);
+    }
+
+    /* Paginação moderna */
+    .pagination-modern {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-sm);
+        margin-top: var(--space-xl);
+        padding-top: var(--space-lg);
+        border-top: 1px solid var(--border-secondary);
+    }
+
+    .pagination-numbers {
+        display: flex;
+        gap: var(--space-xs);
+        flex-wrap: wrap;
+        max-width: 100%;
+        justify-content: center;
+    }
+
+    .pagination-ellipsis {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-xs) var(--space-sm);
+        font-size: var(--font-size-xs);
+        color: var(--text-tertiary);
+        min-width: 32px;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .app-layout {
+            padding: var(--space-md);
+        }
+
+        .execution-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-title {
+            font-size: var(--font-size-2xl);
+        }
+
+        .pagination-modern {
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .execution-stats-modern {
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .execution-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--space-sm);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .execution-card-modern {
+            padding: var(--space-md);
+        }
+
+        .pagination-numbers {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <header class="page-header fade-in">
+        <div class="breadcrumb">
+            <a href="{% url 'pagina_processar_consulta' %}">
+                <i data-feather="home" style="width: 14px; height: 14px;"></i>
+                Sistema
+            </a>
+            <i data-feather="chevron-right" style="width: 12px; height: 12px; color: var(--text-muted);"></i>
+            <span>Execuções</span>
+        </div>
+        <div class="page-title-section">
+            <h1 class="page-title">
+                <i data-feather="list" style="width: 28px; height: 28px; color: var(--accent-primary);"></i>
+                Histórico de Execuções
+            </h1>
+            <p class="page-subtitle">Visualize e gerencie todas as execuções de consultas realizadas</p>
+        </div>
+    </header>
+
+    <main class="content-area">
+        <div class="modern-card fade-in">
+            <div class="modern-card-header">
+                <div class="modern-card-title">
+                    <i data-feather="activity" style="width: 20px; height: 20px;"></i>
+                    Lista de Execuções
+                </div>
+                <a href="{% url 'pagina_processar_consulta' %}" class="btn-modern btn-modern-primary">
+                    <i data-feather="plus" style="width: 16px; height: 16px;"></i>
+                    Nova Consulta
+                </a>
+            </div>
+            
+            <div class="modern-card-body">
+                {% if page_obj %}
+                    <div class="execution-grid">
+                        {% for execucao in page_obj %}
+                            <a href="{% url 'detalhe_execucao' execucao.id %}" class="execution-card-modern">
+                                <div class="execution-card-header">
+                                    <div class="execution-title">
+                                        <i data-feather="terminal" style="width: 18px; height: 18px; color: var(--accent-primary);"></i>
+                                        <span>{{ execucao.titulo }}</span>
+                                    </div>
+                                    <span class="status-badge-modern status-{{ execucao.status }}-modern">
+                                        {{ execucao.get_status_display }}
+                                    </span>
+                                </div>
+                                
+                                <div class="execution-card-body">
+                                    <div class="execution-info-item">
+                                        <i data-feather="file-text" style="width: 14px; height: 14px;"></i>
+                                        <span>{{ execucao.template_sql.titulo }}</span>
+                                    </div>
+                                    <div class="execution-info-item">
+                                        <i data-feather="calendar" style="width: 14px; height: 14px;"></i>
+                                        <span>{{ execucao.data_inicio|date:"d/m/Y H:i" }}</span>
+                                    </div>
+                                    {% if execucao.data_fim %}
+                                    <div class="execution-info-item">
+                                        <i data-feather="clock" style="width: 14px; height: 14px;"></i>
+                                        <span>Finalizada às {{ execucao.data_fim|date:"H:i" }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="execution-card-footer">
+                                    <div class="execution-stats-modern">
+                                        <span class="stat-item">
+                                            <i data-feather="users" style="width: 14px; height: 14px;"></i>
+                                            {{ execucao.clientes_processados|default:0 }} clientes
+                                        </span>
+                                        {% if execucao.clientes_com_sucesso %}
+                                        <span class="stat-item stat-success">
+                                            <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
+                                            {{ execucao.clientes_com_sucesso }} sucessos
+                                        </span>
+                                        {% endif %}
+                                        {% if execucao.clientes_com_erro %}
+                                        <span class="stat-item stat-error">
+                                            <i data-feather="x-circle" style="width: 14px; height: 14px;"></i>
+                                            {{ execucao.clientes_com_erro }} erros
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <i data-feather="chevron-right" style="width: 16px; height: 16px; color: var(--accent-primary);"></i>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if page_obj.has_other_pages %}
+                    <div class="pagination-modern">
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="btn-modern btn-modern-outline">
+                                <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+                                Anterior
+                            </a>
+                        {% endif %}
+
+                        <div class="pagination-numbers">
+                            {% for num in page_obj.paginator.page_range %}
+                                {# Sempre mostra a primeira e a última página #}
+                                {% if num == 1 or num == page_obj.paginator.num_pages %}
+                                    {% if page_obj.number == num %}
+                                        <span class="btn-modern btn-modern-primary">{{ num }}</span>
+                                    {% else %}
+                                        <a href="?page={{ num }}" class="btn-modern btn-modern-outline">{{ num }}</a>
+                                    {% endif %}
+
+                                {# Mostra um range em volta da página atual (2 para trás e 2 para frente) #}
+                                {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                                    {% if page_obj.number == num %}
+                                        <span class="btn-modern btn-modern-primary">{{ num }}</span>
+                                    {% else %}
+                                        <a href="?page={{ num }}" class="btn-modern btn-modern-outline">{{ num }}</a>
+                                    {% endif %}
+
+                                {# Reticências após o início #}
+                                {% elif num == 2 and page_obj.number > 4 %}
+                                    <span class="pagination-ellipsis">...</span>
+
+                                {# Reticências antes do fim #}
+                                {% elif num == page_obj.paginator.num_pages|add:'-1' and page_obj.number < page_obj.paginator.num_pages|add:'-3' %}
+                                    <span class="pagination-ellipsis">...</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="btn-modern btn-modern-outline">
+                                Próxima
+                                <i data-feather="arrow-right" style="width: 14px; height: 14px;"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="empty-state-modern">
+                        <div class="empty-icon">
+                            <i data-feather="folder-minus" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
+                        </div>
+                        <h3>Nenhuma execução encontrada</h3>
+                        <p>Ainda não há execuções registradas no sistema.</p>
+                        <a href="{% url 'pagina_processar_consulta' %}" class="btn-modern btn-modern-primary">
+                            <i data-feather="plus" style="width: 16px; height: 16px;"></i>
+                            Criar primeira consulta
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

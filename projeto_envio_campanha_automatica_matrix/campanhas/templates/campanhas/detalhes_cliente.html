@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhes do Cliente | {{ cliente.nome_razaosocial }}{% endblock %}
+
+{% block page_title %}Detalhes do Cliente{% endblock %}
+{% block page_subtitle %}{{ cliente.nome_razaosocial }} - Código: {{ cliente.codigo_cliente }}{% endblock %}
+
+{% block navbar_actions %}
+<a href="javascript:history.back()" class="action-button">
+    <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+    Voltar
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Layout da aplicação */
+    .app-layout {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: var(--space-lg);
+    }
+
+    .page-header {
+        margin-bottom: var(--space-xl);
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-md);
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
+    }
+
+    .breadcrumb a {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+    }
+
+    .breadcrumb a:hover {
+        color: var(--accent-primary);
+    }
+
+    .page-title-section {
+        margin-top: var(--space-md);
+    }
+
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--text-primary);
+        margin-bottom: var(--space-sm);
+    }
+
+    .page-subtitle {
+        color: var(--text-tertiary);
+        font-size: var(--font-size-lg);
+        margin: 0;
+    }
+
+    /* Grid de informações */
+    .info-grid {
+        display: grid;
+        gap: var(--space-lg);
+        grid-template-columns: 1fr 1fr;
+        margin-bottom: var(--space-xl);
+    }
+
+    .info-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+    }
+
+    .info-section-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin-bottom: var(--space-md);
+        padding-bottom: var(--space-sm);
+        border-bottom: 1px solid var(--border-secondary);
+    }
+
+    .info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-md);
+        padding: var(--space-sm);
+        background: rgba(139, 148, 158, 0.05);
+        border-radius: var(--radius-md);
+    }
+
+    .info-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .info-label {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        color: var(--text-tertiary);
+        min-width: 120px;
+        margin-bottom: var(--space-xs);
+    }
+
+    .info-value {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        flex: 1;
+        word-break: break-word;
+    }
+
+    .info-value.empty {
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    .info-value.code {
+        font-family: var(--font-family-mono);
+        font-size: var(--font-size-xs);
+        background: var(--bg-tertiary);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-primary);
+    }
+
+    /* Seção de dados dinâmicos */
+    .dynamic-data-section {
+        grid-column: 1 / -1;
+    }
+
+    .dynamic-item {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: var(--space-md);
+        padding: var(--space-sm);
+        border-bottom: 1px solid var(--border-secondary);
+    }
+
+    .dynamic-item:last-child {
+        border-bottom: none;
+    }
+
+    .dynamic-key {
+        font-family: var(--font-family-mono);
+        font-size: var(--font-size-sm);
+        color: var(--accent-primary);
+        font-weight: var(--font-weight-medium);
+    }
+
+    .dynamic-value {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        word-break: break-word;
+    }
+
+    /* Dados JSON */
+    .json-viewer {
+        background: var(--bg-tertiary) !important;
+        border: 1px solid var(--border-primary) !important;
+        border-radius: var(--radius-md) !important;
+        font-family: var(--font-family-mono) !important;
+        font-size: var(--font-size-xs) !important;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .json-viewer .json-key {
+        color: var(--accent-primary) !important;
+    }
+
+    .json-viewer .json-string {
+        color: var(--accent-success) !important;
+    }
+
+    .json-viewer .json-number {
+        color: var(--accent-warning) !important;
+    }
+
+    .json-viewer .json-boolean {
+        color: var(--accent-danger) !important;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .app-layout {
+            padding: var(--space-md);
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-title {
+            font-size: var(--font-size-2xl);
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--space-sm);
+        }
+
+        .dynamic-item {
+            grid-template-columns: 1fr;
+            gap: var(--space-sm);
+        }
+    }
+
+    /* Empty state */
+    .empty-dynamic-data {
+        text-align: center;
+        padding: var(--space-xl);
+        color: var(--text-muted);
+    }
+
+    .empty-dynamic-data i {
+        margin-bottom: var(--space-md);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <header class="page-header fade-in">
+        <div class="breadcrumb">
+            <a href="{% url 'listar_execucoes' %}">
+                <i data-feather="home" style="width: 14px; height: 14px;"></i>
+                Sistema
+            </a>
+            <i data-feather="chevron-right" style="width: 12px; height: 12px; color: var(--text-muted);"></i>
+            <a href="javascript:history.back()">
+                Execução
+            </a>
+            <i data-feather="chevron-right" style="width: 12px; height: 12px; color: var(--text-muted);"></i>
+            <span>Cliente</span>
+        </div>
+        <div class="page-title-section">
+            <h1 class="page-title">
+                <i data-feather="user" style="width: 28px; height: 28px; color: var(--accent-primary);"></i>
+                <div>
+                    <div style="color: var(--text-primary);">{{ cliente.nome_razaosocial }}</div>
+                    <div style="font-size: var(--font-size-sm); font-weight: var(--font-weight-normal); color: var(--text-tertiary);">
+                        Código: {{ cliente.codigo_cliente }}
+                    </div>
+                </div>
+            </h1>
+        </div>
+    </header>
+
+    <main class="content-area">
+        <div class="info-grid fade-in">
+            <!-- Informações Básicas -->
+            <div class="info-section">
+                <div class="info-section-title">
+                    <i data-feather="user" style="width: 18px; height: 18px;"></i>
+                    Informações Básicas
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Código do Cliente</div>
+                        <div class="info-value code">{{ cliente.codigo_cliente }}</div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Nome/Razão Social</div>
+                        <div class="info-value">{{ cliente.nome_razaosocial }}</div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Telefone</div>
+                        <div class="info-value {% if not cliente.telefone_corrigido %}empty{% endif %}">
+                            {{ cliente.telefone_corrigido|default:"Não informado" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Empresa/Base</div>
+                        <div class="info-value {% if not cliente.credencial_banco %}empty{% endif %}">
+                            {{ cliente.credencial_banco.titulo|default:"Não informado" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informações Financeiras -->
+            <div class="info-section">
+                <div class="info-section-title">
+                    <i data-feather="credit-card" style="width: 18px; height: 18px;"></i>
+                    Dados Financeiros
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">ID da Fatura</div>
+                        <div class="info-value code {% if not cliente.id_fatura %}empty{% endif %}">
+                            {{ cliente.id_fatura|default:"Não informado" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Vencimento</div>
+                        <div class="info-value {% if not cliente.vencimento_fatura %}empty{% endif %}">
+                            {{ cliente.vencimento_fatura|date:"d/m/Y"|default:"Não informado" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Valor da Fatura</div>
+                        <div class="info-value {% if not cliente.valor_fatura %}empty{% endif %}">
+                            {% if cliente.valor_fatura %}
+                                R$ {{ cliente.valor_fatura|floatformat:2 }}
+                            {% else %}
+                                Não informado
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">PIX Copia e Cola</div>
+                        <div class="info-value code {% if not cliente.pix %}empty{% endif %}">
+                            {{ cliente.pix|default:"Não informado" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Código de Barras</div>
+                        <div class="info-value code {% if not cliente.codigo_barras %}empty{% endif %}">
+                            {{ cliente.codigo_barras|default:"Não informado" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">Link do Boleto</div>
+                        <div class="info-value {% if not cliente.link_boleto %}empty{% endif %}">
+                            {% if cliente.link_boleto %}
+                                <a href="{{ cliente.link_boleto }}" target="_blank" style="color: var(--accent-primary); text-decoration: none;">
+                                    {{ cliente.link_boleto|truncatechars:50 }}
+                                    <i data-feather="external-link" style="width: 12px; height: 12px; margin-left: 4px;"></i>
+                                </a>
+                            {% else %}
+                                Não informado
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dados Dinâmicos -->
+            {% if cliente.dados_dinamicos %}
+            <div class="info-section dynamic-data-section">
+                <div class="info-section-title">
+                    <i data-feather="code" style="width: 18px; height: 18px;"></i>
+                    Dados Dinâmicos do SQL
+                    <span style="font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); color: var(--text-muted); margin-left: auto;">
+                        {{ cliente.dados_dinamicos|length }} campo{{ cliente.dados_dinamicos|length|pluralize }}
+                    </span>
+                </div>
+                
+                {% for key, value in cliente.dados_dinamicos.items %}
+                <div class="dynamic-item">
+                    <div class="dynamic-key">{{ key }}</div>
+                    <div class="dynamic-value">{{ value|default:"—" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="info-section dynamic-data-section">
+                <div class="info-section-title">
+                    <i data-feather="code" style="width: 18px; height: 18px;"></i>
+                    Dados Dinâmicos do SQL
+                </div>
+                
+                <div class="empty-dynamic-data">
+                    <i data-feather="inbox" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
+                    <p>Nenhum dado dinâmico disponível</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Metadados -->
+            <div class="info-section" style="grid-column: 1 / -1;">
+                <div class="info-section-title">
+                    <i data-feather="clock" style="width: 18px; height: 18px;"></i>
+                    Metadados
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-md);">
+                    <div class="info-item">
+                        <div>
+                            <div class="info-label">Data de Criação</div>
+                            <div class="info-value {% if not cliente.data_criacao %}empty{% endif %}">
+                                {{ cliente.data_criacao|date:"d/m/Y H:i:s"|default:"Não informado" }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div>
+                            <div class="info-label">Última Atualização</div>
+                            <div class="info-value {% if not cliente.data_atualizacao %}empty{% endif %}">
+                                {{ cliente.data_atualizacao|date:"d/m/Y H:i:s"|default:"Não informado" }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        
+        // Adicionar funcionalidade de cópia para códigos
+        document.querySelectorAll('.info-value.code').forEach(element => {
+            if (element.textContent.trim() !== 'Não informado') {
+                element.style.cursor = 'pointer';
+                element.title = 'Clique para copiar';
+                
+                element.addEventListener('click', function() {
+                    navigator.clipboard.writeText(this.textContent).then(() => {
+                        // Visual feedback
+                        const original = this.style.background;
+                        this.style.background = 'rgba(40, 167, 69, 0.2)';
+                        setTimeout(() => {
+                            this.style.background = original;
+                        }, 500);
+                    });
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
