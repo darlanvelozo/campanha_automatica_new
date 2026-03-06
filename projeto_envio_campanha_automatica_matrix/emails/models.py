@@ -1,10 +1,201 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db.models import Q, CheckConstraint
 from campanhas.models import TemplateSQL, ConsultaExecucao, ClienteConsultado
 import re
 import json
 from datetime import datetime, timedelta
+
+
+class BaseLeads(models.Model):
+    """
+    Base de leads importada via CSV
+    Armazena metadados da importação e configuração das colunas
+    """
+    
+    nome = models.CharField(
+        max_length=255,
+        verbose_name="Nome da Base",
+        help_text="Nome descritivo para identificar esta base de leads"
+    )
+    
+    descricao = models.TextField(
+        blank=True,
+        verbose_name="Descrição",
+        help_text="Descrição detalhada sobre esta base de leads"
+    )
+    
+    arquivo_original_nome = models.CharField(
+        max_length=255,
+        verbose_name="Nome do Arquivo Original",
+        help_text="Nome do arquivo CSV que foi importado"
+    )
+    
+    # Totais
+    total_leads = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Total de Leads",
+        help_text="Total de linhas processadas do CSV"
+    )
+    
+    total_validos = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Total de Válidos",
+        help_text="Leads com email válido"
+    )
+    
+    total_invalidos = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Total de Inválidos",
+        help_text="Leads com email inválido ou dados faltando"
+    )
+    
+    # Metadados das colunas do CSV
+    colunas_disponiveis = models.JSONField(
+        default=list,
+        verbose_name="Colunas Disponíveis",
+        help_text="Lista de todas as colunas encontradas no CSV"
+    )
+    
+    coluna_email = models.CharField(
+        max_length=100,
+        verbose_name="Coluna de Email",
+        help_text="Nome da coluna que contém o email"
+    )
+    
+    coluna_nome = models.CharField(
+        max_length=100,
+        verbose_name="Coluna de Nome",
+        help_text="Nome da coluna que contém o nome do lead"
+    )
+    
+    # Configurações de importação
+    delimitador_usado = models.CharField(
+        max_length=5,
+        default=';',
+        verbose_name="Delimitador",
+        help_text="Delimitador usado no CSV (;, ,, tab)"
+    )
+    
+    encoding_usado = models.CharField(
+        max_length=20,
+        default='utf-8',
+        verbose_name="Encoding",
+        help_text="Encoding do arquivo CSV"
+    )
+    
+    # Controle
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo",
+        help_text="Se esta base está ativa para uso"
+    )
+    
+    data_importacao = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Data de Importação"
+    )
+    
+    data_atualizacao = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Data de Atualização"
+    )
+    
+    class Meta:
+        verbose_name = "Base de Leads"
+        verbose_name_plural = "Bases de Leads"
+        ordering = ['-data_importacao']
+    
+    def __str__(self):
+        return f"{self.nome} ({self.total_validos} leads válidos)"
+    
+    def get_taxa_validos(self):
+        """Retorna percentual de leads válidos"""
+        if self.total_leads == 0:
+            return 0
+        return round((self.total_validos / self.total_leads) * 100, 2)
+
+
+class Lead(models.Model):
+    """
+    Lead individual importado do CSV
+    """
+    
+    base_leads = models.ForeignKey(
+        BaseLeads,
+        on_delete=models.CASCADE,
+        related_name='leads',
+        verbose_name="Base de Leads"
+    )
+    
+    email = models.EmailField(
+        verbose_name="Email",
+        help_text="Email do lead"
+    )
+    
+    nome = models.CharField(
+        max_length=255,
+        verbose_name="Nome",
+        help_text="Nome do lead"
+    )
+    
+    # Dados adicionais dinâmicos do CSV
+    dados_adicionais = models.JSONField(
+        default=dict,
+        verbose_name="Dados Adicionais",
+        help_text="Todas as outras colunas do CSV (Telefone, Local, etc.)"
+    )
+    
+    # Controle
+    linha_original = models.PositiveIntegerField(
+        verbose_name="Linha Original",
+        help_text="Número da linha no CSV original"
+    )
+    
+    valido = models.BooleanField(
+        default=True,
+        verbose_name="Válido",
+        help_text="Se o lead tem dados válidos (email principalmente)"
+    )
+    
+    motivo_invalido = models.TextField(
+        blank=True,
+        verbose_name="Motivo Inválido",
+        help_text="Razão pela qual o lead foi marcado como inválido"
+    )
+    
+    data_criacao = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Data de Criação"
+    )
+    
+    class Meta:
+        verbose_name = "Lead"
+        verbose_name_plural = "Leads"
+        ordering = ['linha_original']
+        unique_together = ['base_leads', 'email']  # Email único dentro de cada base
+    
+    def __str__(self):
+        return f"{self.nome} ({self.email})"
+    
+    def get_dados_completos(self):
+        """
+        Retorna todos os dados do lead em formato compatível com templates
+        Similar ao método get_dados_completos() de ClienteConsultado
+        """
+        dados = {
+            'email': self.email,
+            'nome': self.nome,
+            'nome_destinatario': self.nome,
+            'email_destinatario': self.email,
+        }
+        
+        # Adicionar dados adicionais
+        if self.dados_adicionais:
+            dados.update(self.dados_adicionais)
+        
+        return dados
 
 
 class ConfiguracaoServidorEmail(models.Model):
@@ -390,6 +581,7 @@ class CampanhaEmail(models.Model):
     """
     Campanha de envio de emails integrada com ConsultaExecucao existente
     REUTILIZA a estrutura de consultas já implementada
+    SUPORTA envio para clientes ou leads importados via CSV
     """
     
     STATUS_CHOICES = [
@@ -421,6 +613,11 @@ class CampanhaEmail(models.Model):
         ('6', 'Sábado'),
     ]
     
+    TIPO_FONTE_CHOICES = [
+        ('clientes', 'Clientes (SQL/Execução)'),
+        ('leads', 'Leads (CSV Importado)'),
+    ]
+    
     nome = models.CharField(
         max_length=255,
         verbose_name="Nome da Campanha",
@@ -431,6 +628,25 @@ class CampanhaEmail(models.Model):
         blank=True,
         verbose_name="Descrição",
         help_text="Descrição detalhada da campanha"
+    )
+    
+    # NOVO: Tipo de fonte de dados
+    tipo_fonte = models.CharField(
+        max_length=20,
+        choices=TIPO_FONTE_CHOICES,
+        default='clientes',
+        verbose_name="Tipo de Fonte",
+        help_text="De onde vêm os dados: clientes do sistema ou leads importados"
+    )
+    
+    # NOVO: Base de leads (para campanhas de leads)
+    base_leads = models.ForeignKey(
+        BaseLeads,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Base de Leads",
+        help_text="Base de leads importada (apenas para tipo_fonte='leads')"
     )
     
     template_email = models.ForeignKey(
@@ -447,7 +663,7 @@ class CampanhaEmail(models.Model):
         help_text="Configuração SMTP para envio dos emails"
     )
     
-    # Integração com sistema existente
+    # Integração com sistema existente (para clientes)
     template_sql = models.ForeignKey(
         TemplateSQL,
         on_delete=models.CASCADE,
@@ -653,13 +869,6 @@ class CampanhaEmail(models.Model):
         verbose_name="Data de Fim da Execução"
     )
     
-    proxima_execucao = models.DateTimeField(
-        null=True,
-        blank=True,
-        verbose_name="Próxima Execução",
-        help_text="Data da próxima execução agendada"
-    )
-    
     log_execucao = models.TextField(
         blank=True,
         verbose_name="Log de Execução",
@@ -676,6 +885,14 @@ class CampanhaEmail(models.Model):
     
     def clean(self):
         """Validação personalizada do modelo"""
+        # Validação de fonte de dados
+        if self.tipo_fonte == 'clientes':
+            if not self.template_sql and not self.consulta_execucao:
+                raise ValidationError("Para campanhas de clientes, é necessário Template SQL ou Execução existente")
+        elif self.tipo_fonte == 'leads':
+            if not self.base_leads:
+                raise ValidationError("Para campanhas de leads, é necessário selecionar uma Base de Leads")
+        
         if self.tipo_agendamento == 'personalizado' and not self.expressao_cron:
             raise ValidationError("Expressão cron é obrigatória para agendamento personalizado")
         
@@ -848,25 +1065,31 @@ class CampanhaEmail(models.Model):
             erros.append("Configuração do servidor SMTP é obrigatória")
         
         # Validação de fonte de dados
-        if not self.template_sql and not self.consulta_execucao:
-            erros.append("É necessário escolher um Template SQL ou uma Execução existente")
-        
-        if self.template_sql:
-            if not self.credencial_banco:
-                erros.append("Credencial do banco é obrigatória quando usar Template SQL")
+        if self.tipo_fonte == 'leads':
+            # Validação para leads
+            if not self.base_leads:
+                erros.append("Base de leads é obrigatória quando a fonte é Leads (CSV)")
+        else:
+            # Validação para clientes (comportamento original)
+            if not self.template_sql and not self.consulta_execucao:
+                erros.append("É necessário escolher um Template SQL ou uma Execução existente")
             
-            if not self.pular_consulta_api and not self.credencial_hubsoft:
-                erros.append("Credencial Hubsoft é obrigatória quando consulta API está habilitada")
-            
-            # Validar variáveis SQL
-            if self.template_sql.variaveis_config:
-                variaveis_necessarias = self.template_sql.variaveis_config.keys()
-                variaveis_fornecidas = (self.valores_variaveis_sql or {}).keys()
+            if self.template_sql:
+                if not self.credencial_banco:
+                    erros.append("Credencial do banco é obrigatória quando usar Template SQL")
                 
-                for var in variaveis_necessarias:
-                    config = self.template_sql.variaveis_config.get(var, {})
-                    if config.get('obrigatorio', True) and var not in variaveis_fornecidas:
-                        erros.append(f"Variável SQL obrigatória não fornecida: {var}")
+                if not self.pular_consulta_api and not self.credencial_hubsoft:
+                    erros.append("Credencial Hubsoft é obrigatória quando consulta API está habilitada")
+                
+                # Validar variáveis SQL
+                if self.template_sql.variaveis_config:
+                    variaveis_necessarias = self.template_sql.variaveis_config.keys()
+                    variaveis_fornecidas = (self.valores_variaveis_sql or {}).keys()
+                    
+                    for var in variaveis_necessarias:
+                        config = self.template_sql.variaveis_config.get(var, {})
+                        if config.get('obrigatorio', True) and var not in variaveis_fornecidas:
+                            erros.append(f"Variável SQL obrigatória não fornecida: {var}")
         
         return erros
     
@@ -921,6 +1144,21 @@ class CampanhaEmail(models.Model):
                 clientes_com_email.append(cliente)
         
         return clientes_com_email
+    
+    def obter_leads_para_envio(self):
+        """
+        Obtém a lista de leads válidos da base importada para envio
+        """
+        if not self.base_leads:
+            return []
+        
+        # Obter leads válidos da base
+        leads = Lead.objects.filter(
+            base_leads=self.base_leads,
+            valido=True
+        ).order_by('linha_original')
+        
+        return list(leads)
     
     def calcular_proxima_execucao(self, base_datetime=None):
         """
@@ -1122,7 +1360,17 @@ class EnvioEmailIndividual(models.Model):
     cliente = models.ForeignKey(
         ClienteConsultado,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name="Cliente"
+    )
+    
+    lead = models.ForeignKey(
+        'Lead',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="Lead"
     )
     
     email_destinatario = models.EmailField(
@@ -1220,7 +1468,16 @@ class EnvioEmailIndividual(models.Model):
         verbose_name = "Envio de Email Individual"
         verbose_name_plural = "Envios de Email Individuais"
         ordering = ['-data_envio']
-        unique_together = ['campanha', 'cliente', 'email_destinatario']
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(cliente__isnull=False, lead__isnull=True) |
+                    models.Q(cliente__isnull=True, lead__isnull=False)
+                ),
+                name='cliente_ou_lead'
+            )
+        ]
+        # Removido unique_together pois agora pode ser cliente OU lead
     
     def __str__(self):
         return "{} ({}) - {}".format(self.nome_destinatario, self.email_destinatario, self.get_status_display())

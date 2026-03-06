@@ -1,0 +1,287 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}Sistema de Campanhas{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layouts.css' %}">
+    
+    <!-- Feather Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% csrf_token %}
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">Campanhas</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i data-feather="chevrons-left"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <!-- Dashboard Geral -->
+            <a href="{% url 'dashboard_geral' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard_geral' %}active{% endif %}">
+                <i data-feather="home"></i>
+                <span class="nav-text">Dashboard</span>
+            </a>
+
+            <!-- Módulo WhatsApp/HSM -->
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i data-feather="message-circle" style="color: var(--color-whatsapp);"></i>
+                    <span>WhatsApp</span>
+                </div>
+                <a href="/whatsapp/processar-consulta/" class="nav-item sub {% if 'processar_consulta' in request.path %}active{% endif %}">
+                    <i data-feather="plus-circle"></i>
+                    <span class="nav-text">Nova Consulta</span>
+                </a>
+                <a href="/whatsapp/" class="nav-item sub {% if request.path == '/whatsapp/' %}active{% endif %}">
+                    <i data-feather="list"></i>
+                    <span class="nav-text">Execuções</span>
+                </a>
+                <a href="/whatsapp/envios-hsm/" class="nav-item sub {% if 'envios-hsm' in request.path %}active{% endif %}">
+                    <i data-feather="send"></i>
+                    <span class="nav-text">Envios HSM</span>
+                </a>
+            </div>
+
+            <!-- Módulo Emails -->
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i data-feather="mail" style="color: var(--color-email);"></i>
+                    <span>Emails</span>
+                </div>
+                <a href="/emails/" class="nav-item sub {% if request.path == '/emails/' %}active{% endif %}">
+                    <i data-feather="bar-chart-2"></i>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/emails/campanhas/nova/" class="nav-item sub {% if 'criar_campanha' in request.path or 'nova' in request.path %}active{% endif %}">
+                    <i data-feather="plus-circle"></i>
+                    <span class="nav-text">Nova Campanha</span>
+                </a>
+                <a href="/emails/campanhas/" class="nav-item sub {% if 'campanhas' in request.path and 'nova' not in request.path %}active{% endif %}">
+                    <i data-feather="list"></i>
+                    <span class="nav-text">Campanhas</span>
+                </a>
+                <a href="/emails/leads/" class="nav-item sub {% if 'bases-leads' in request.path or 'leads' in request.path %}active{% endif %}">
+                    <i data-feather="database"></i>
+                    <span class="nav-text">Bases de Leads</span>
+                </a>
+            </div>
+
+            <!-- Módulo Native -->
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i data-feather="phone" style="color: var(--color-native);"></i>
+                    <span>Native</span>
+                </div>
+                <a href="/native/dashboard/" class="nav-item sub {% if 'native' in request.path and 'dashboard' in request.path %}active{% endif %}">
+                    <i data-feather="bar-chart-2"></i>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/native/" class="nav-item sub {% if request.path == '/native/' %}active{% endif %}">
+                    <i data-feather="list"></i>
+                    <span class="nav-text">Campanhas</span>
+                </a>
+            </div>
+
+            <!-- Configurações -->
+            <div class="nav-section">
+                <a href="/admin/" class="nav-item" target="_blank">
+                    <i data-feather="settings"></i>
+                    <span class="nav-text">Admin</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <i data-feather="sun" class="theme-icon-light"></i>
+                <i data-feather="moon" class="theme-icon-dark"></i>
+                <span class="nav-text">Tema</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <!-- Topbar -->
+        <header class="topbar">
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle mobile menu">
+                <i data-feather="menu"></i>
+            </button>
+
+            <div class="breadcrumb">
+                {% block breadcrumb %}
+                <span class="breadcrumb-item">Home</span>
+                {% endblock %}
+            </div>
+
+            <div class="topbar-actions">
+                <!-- Busca Global -->
+                <div class="search-container">
+                    <button class="search-trigger" id="searchTrigger" aria-label="Search">
+                        <i data-feather="search"></i>
+                    </button>
+                    <div class="search-modal" id="searchModal">
+                        <div class="search-input-wrapper">
+                            <i data-feather="search"></i>
+                            <input type="text" id="globalSearch" placeholder="Buscar... (Ctrl+K)" class="search-input">
+                        </div>
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                </div>
+
+                <!-- Notificações -->
+                <div class="notifications-container">
+                    <button class="icon-button" id="notificationsButton" aria-label="Notifications">
+                        <i data-feather="bell"></i>
+                        <span class="badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="notifications-dropdown" id="notificationsDropdown">
+                        <div class="notifications-header">
+                            <h3>Notificações</h3>
+                            <div class="notifications-actions">
+                                <button class="btn-icon-sm" id="markAllReadBtn" title="Marcar todas como lidas">
+                                    <i data-feather="check-check"></i>
+                                </button>
+                                <button class="btn-icon-sm" id="clearAllBtn" title="Limpar todas">
+                                    <i data-feather="trash-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="notifications-body" id="notificationsBody">
+                            <div class="notifications-loading">
+                                <div class="spinner"></div>
+                                <p>Carregando notificações...</p>
+                            </div>
+                        </div>
+                        <div class="notifications-footer">
+                            <a href="{% url 'configuracoes_notificacoes' %}" class="btn-link">
+                                <i data-feather="settings"></i>
+                                Configurar Notificações
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Perfil -->
+                <div class="user-menu">
+                    <button class="user-avatar" id="userMenuButton" aria-label="User menu">
+                        <i data-feather="user"></i>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-dropdown-header">
+                            <div class="user-avatar-large">
+                                <i data-feather="user"></i>
+                            </div>
+                            <div class="user-info">
+                                <p class="user-name">{{ user.get_full_name|default:user.username }}</p>
+                                <p class="user-email">{{ user.email|default:"" }}</p>
+                            </div>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <div class="user-dropdown-body">
+                            <a href="{% url 'configuracoes_notificacoes' %}" class="user-dropdown-item">
+                                <i data-feather="bell"></i>
+                                <span>Configurar Notificações</span>
+                            </a>
+                            <a href="/admin/" class="user-dropdown-item">
+                                <i data-feather="settings"></i>
+                                <span>Configurações do Sistema</span>
+                            </a>
+                            <a href="/admin/auth/user/{{ user.id }}/password/" class="user-dropdown-item">
+                                <i data-feather="key"></i>
+                                <span>Alterar Senha</span>
+                            </a>
+                            <a href="#" class="user-dropdown-item">
+                                <i data-feather="help-circle"></i>
+                                <span>Ajuda & Suporte</span>
+                            </a>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <div class="user-dropdown-footer">
+                            <a href="/admin/logout/" class="user-dropdown-item danger">
+                                <i data-feather="log-out"></i>
+                                <span>Sair</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="content">
+            <!-- Messages do Django -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} slide-down">
+                    <i data-feather="{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}alert-circle{% elif message.tags == 'warning' %}alert-triangle{% else %}info{% endif %}"></i>
+                    <span>{{ message }}</span>
+                    <button class="alert-close" onclick="this.parentElement.remove()">
+                        <i data-feather="x"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Page Header -->
+            {% block page_header %}
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1 class="page-title">{% block page_title %}Página{% endblock %}</h1>
+                    <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+                </div>
+                <div class="page-actions">
+                    {% block page_actions %}{% endblock %}
+                </div>
+            </div>
+            {% endblock %}
+
+            <!-- Main Content Block -->
+            <div class="content-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Overlay para mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/navigation.js' %}"></script>
+    <script src="{% static 'js/theme-toggle.js' %}"></script>
+    <script src="{% static 'js/keyboard-shortcuts.js' %}"></script>
+    
+    <script>
+        // Inicializar Feather Icons
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

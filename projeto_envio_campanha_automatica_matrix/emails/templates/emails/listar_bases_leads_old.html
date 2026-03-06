@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Bases de Leads{% endblock %}
+
+{% block page_title %}📋 Bases de Leads{% endblock %}
+{% block page_subtitle %}Gerencie suas bases de leads importadas via CSV{% endblock %}
+
+{% block navbar_actions %}
+<a href="{% url 'emails:importar_leads' %}" class="action-button success">
+    <i data-feather="upload" style="width: 14px; height: 14px;"></i>
+    Importar CSV
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estatísticas -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="bar-chart-2" style="width: 18px; height: 18px;"></i>
+            Estatísticas
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <div class="grid-modern grid-4">
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ stats.total_bases }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Total de Bases</div>
+            </div>
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--accent-success);">
+                    {{ stats.bases_ativas }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Bases Ativas</div>
+            </div>
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--accent-primary);">
+                    {{ stats.total_leads }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Leads Válidos</div>
+            </div>
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--accent-warning);">
+                    {{ stats.total_leads_invalidos }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Leads Inválidos</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="filter" style="width: 18px; height: 18px;"></i>
+            Filtros
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <form method="get" style="display: flex; gap: var(--space-md); align-items: end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Buscar:
+                </label>
+                <input type="text" name="search" value="{{ search }}" placeholder="Nome da base, descrição..." 
+                       style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+            </div>
+            <div style="min-width: 150px;">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Status:
+                </label>
+                <select name="ativo" style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    <option value="">Todos</option>
+                    <option value="true" {% if ativo_filter == 'true' %}selected{% endif %}>Ativos</option>
+                    <option value="false" {% if ativo_filter == 'false' %}selected{% endif %}>Inativos</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-modern btn-modern-primary">
+                <i data-feather="search" style="width: 14px; height: 14px;"></i>
+                Filtrar
+            </button>
+            {% if search or ativo_filter %}
+            <a href="{% url 'emails:listar_bases_leads' %}" class="btn-modern btn-modern-outline">
+                <i data-feather="x" style="width: 14px; height: 14px;"></i>
+                Limpar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Bases -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="list" style="width: 18px; height: 18px;"></i>
+            Bases de Leads ({{ page_obj.paginator.count }})
+        </div>
+    </div>
+    <div class="modern-card-body">
+        {% if page_obj %}
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                {% for base in page_obj %}
+                <div style="padding: var(--space-lg); border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); background: var(--bg-secondary); transition: all var(--transition-normal);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-md);">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 var(--space-xs) 0; color: var(--text-primary); font-size: var(--font-size-lg);">
+                                {{ base.nome }}
+                            </h3>
+                            {% if base.descricao %}
+                            <p style="margin: 0; color: var(--text-secondary); font-size: var(--font-size-sm);">
+                                {{ base.descricao|truncatewords:30 }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; gap: var(--space-sm);">
+                            <span style="padding: var(--space-xs) var(--space-sm); background: {% if base.ativo %}var(--accent-success){% else %}var(--accent-danger){% endif %}; color: white; border-radius: var(--radius-sm); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);">
+                                {% if base.ativo %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
+                        <div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Total de Leads</div>
+                            <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                                {{ base.total_leads }}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Válidos</div>
+                            <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--accent-success);">
+                                {{ base.total_validos }}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Inválidos</div>
+                            <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--accent-warning);">
+                                {{ base.total_invalidos }}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Data Importação</div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                                {{ base.data_importacao|date:"d/m/Y H:i" }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                        <a href="{% url 'emails:detalhe_base_leads' base.id %}" class="btn-modern btn-modern-primary" style="font-size: var(--font-size-sm);">
+                            <i data-feather="eye" style="width: 14px; height: 14px;"></i>
+                            Ver Detalhes
+                        </a>
+                        <a href="{% url 'emails:exportar_base_leads' base.id %}" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-sm);">
+                            <i data-feather="download" style="width: 14px; height: 14px;"></i>
+                            Exportar CSV
+                        </a>
+                        <a href="{% url 'emails:excluir_base_leads' base.id %}" class="btn-modern btn-modern-danger" style="font-size: var(--font-size-sm);">
+                            <i data-feather="trash-2" style="width: 14px; height: 14px;"></i>
+                            Excluir
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Paginação -->
+            {% if page_obj.has_other_pages %}
+            <div style="margin-top: var(--space-lg); display: flex; justify-content: center; gap: var(--space-sm);">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if ativo_filter %}&ativo={{ ativo_filter }}{% endif %}" class="btn-modern btn-modern-outline">
+                    <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+                    Anterior
+                </a>
+                {% endif %}
+                
+                <span style="padding: var(--space-sm) var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md); color: var(--text-secondary);">
+                    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if ativo_filter %}&ativo={{ ativo_filter }}{% endif %}" class="btn-modern btn-modern-outline">
+                    Próxima
+                    <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+            <div style="text-align: center; padding: var(--space-xl); color: var(--text-tertiary);">
+                <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: var(--space-md); opacity: 0.5;"></i>
+                <p style="margin: 0;">Nenhuma base de leads encontrada.</p>
+                <a href="{% url 'emails:importar_leads' %}" class="btn-modern btn-modern-primary" style="margin-top: var(--space-md);">
+                    <i data-feather="upload" style="width: 14px; height: 14px;"></i>
+                    Importar Primeira Base
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Inicializar ícones Feather
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

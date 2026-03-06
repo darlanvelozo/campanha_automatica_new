@@ -12,13 +12,15 @@ import json
 from datetime import datetime, timedelta
 from .models import (
     ConfiguracaoServidorEmail, TemplateEmail, CampanhaEmail, 
-    EnvioEmailIndividual, LogEnvioEmail
+    EnvioEmailIndividual, LogEnvioEmail, BaseLeads, Lead
 )
+from .services_csv import ServicoImportacaoCSV
 from .services import (
     GerenciadorCampanhaEmail, testar_configuracao_smtp, 
     obter_estatisticas_campanha
 )
-from campanhas.models import TemplateSQL, ConsultaExecucao
+from campanhas.models import TemplateSQL, ConsultaExecucao, CredenciaisBancoDados, CredenciaisHubsoft
+from django.core.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,31 @@ def dashboard_emails(request):
         total_enviados__gt=0
     ).order_by('-total_enviados')[:5]
     
+    # Bases de leads recentes
+    try:
+        bases_leads = BaseLeads.objects.order_by('-data_importacao')[:5]
+    except Exception as e:
+        logger.error(f"Erro ao buscar bases de leads: {e}")
+        bases_leads = []
+    
+    # Estatísticas por status
+    from django.db.models import Count
+    try:
+        stats_por_status = list(CampanhaEmail.objects.values('status').annotate(
+            total=Count('id')
+        ).order_by('-total'))
+        
+        # Adicionar display name para cada status
+        status_dict = dict(CampanhaEmail.STATUS_CHOICES)
+        for stat in stats_por_status:
+            stat['status_display'] = status_dict.get(stat['status'], stat['status'])
+    except Exception as e:
+        logger.error(f"Erro ao gerar estatísticas por status: {e}")
+        stats_por_status = []
+    
+    # Adicionar emails_enviados ao stats
+    stats['emails_enviados'] = envios_mes
+    
     context = {
         'stats': stats,
         'campanhas_recentes': campanhas_recentes,
@@ -74,6 +101,8 @@ def dashboard_emails(request):
         'taxa_sucesso_mes': taxa_sucesso_mes,
         'logs_recentes': logs_recentes,
         'templates_populares': templates_populares,
+        'bases_leads': bases_leads,
+        'stats_por_status': stats_por_status,
     }
     
     return render(request, 'emails/dashboard.html', context)
@@ -120,6 +149,8 @@ def listar_campanhas_email(request):
     
     context = {
         'page_obj': page_obj,
+        'campanhas': page_obj,  # Alias para compatibilidade
+        'has_executing': CampanhaEmail.objects.filter(status='executando').exists(),
         'stats': stats,
         'status_filter': status_filter,
         'search': search,
@@ -133,147 +164,258 @@ def criar_campanha_email(request):
     """Cria uma nova campanha de email"""
     
     if request.method == 'POST':
+        # Obter dados do formulário (FORA do transaction.atomic)
+        nome = request.POST.get('nome')
+        descricao = request.POST.get('descricao', '')
+        template_email_id = request.POST.get('template_email')
+        configuracao_servidor_id = request.POST.get('configuracao_servidor')
+        
+        # Fonte de dados (SQL, Execução existente ou Leads)
+        fonte_dados = request.POST.get('fonte_dados')  # 'sql', 'execucao' ou 'leads'
+        template_sql_id = request.POST.get('template_sql')
+        consulta_execucao_id = request.POST.get('consulta_execucao')
+        base_leads_id = request.POST.get('base_leads')
+        
+        # Determinar tipo_fonte
+        if fonte_dados == 'leads':
+            tipo_fonte = 'leads'
+        else:
+            tipo_fonte = 'clientes'
+        
+        # Configurações SQL + API
+        pular_consulta_api = request.POST.get('pular_consulta_api') == 'on'
+        credencial_hubsoft_id = request.POST.get('credencial_hubsoft')
+        credencial_banco_id = request.POST.get('credencial_banco')
+        
+        # Variáveis SQL
+        valores_variaveis_sql = {}
+        if fonte_dados == 'sql' and template_sql_id:
+            # Debug: mostrar todos os parâmetros POST
+            print(f"DEBUG - Parâmetros POST recebidos:")
+            for key, value in request.POST.items():
+                if key.startswith('var_'):
+                    print(f"  {key} = {value}")
+            
+            # Coletar valores das variáveis SQL do formulário
+            for key, value in request.POST.items():
+                if key.startswith('var_'):
+                    var_name = key[4:]  # Remove prefixo 'var_'
+                    if value.strip():  # Só adiciona se não estiver vazio
+                        valores_variaveis_sql[var_name] = value.strip()
+            
+            print(f"DEBUG - Variáveis SQL coletadas: {valores_variaveis_sql}")
+            
+            # Verificar se o template tem variáveis esperadas
+            if template_sql_id:
+                template_sql = TemplateSQL.objects.get(id=template_sql_id)
+                
+                # USAR O MESMO MÉTODO DO APP CAMPANHAS
+                variaveis_config = template_sql.get_variaveis_configuradas()
+                print(f"DEBUG - Configuração de variáveis: {variaveis_config}")
+                
+                # Reprocessar usando a mesma lógica do app campanhas
+                valores_variaveis_sql_corrigido = {}
+                for var_name, config in variaveis_config.items():
+                    valor = request.POST.get(f'var_{var_name}')
+                    
+                    if config.get('obrigatorio', True) and not valor:
+                        print(f"DEBUG - ERRO: Variável obrigatória '{var_name}' não fornecida")
+                    
+                    # Usar valor padrão se não fornecido e não obrigatório
+                    if not valor and not config.get('obrigatorio', True):
+                        valor = config.get('valor_padrao', '')
+                    
+                    if valor:
+                        valores_variaveis_sql_corrigido[var_name] = valor
+                
+                # Atualizar com os valores corrigidos
+                valores_variaveis_sql = valores_variaveis_sql_corrigido
+                print(f"DEBUG - Variáveis SQL corrigidas: {valores_variaveis_sql}")
+        
+        # Tipo de agendamento
+        tipo_agendamento = request.POST.get('tipo_agendamento', 'uma_vez')
+        data_agendamento = request.POST.get('data_agendamento')
+        executar_imediatamente = request.POST.get('executar_imediatamente') == 'on'
+        
+        # Configurações de recorrência
+        intervalo_recorrencia = int(request.POST.get('intervalo_recorrencia', 1))
+        hora_execucao_str = request.POST.get('hora_execucao') or request.POST.get('hora_execucao_semanal') or request.POST.get('hora_execucao_mensal')
+        dias_semana_list = request.POST.getlist('dias_semana')
+        dia_mes_recorrencia = request.POST.get('dia_mes_recorrencia')
+        expressao_cron = request.POST.get('expressao_cron', '')
+        data_fim_recorrencia_str = request.POST.get('data_fim_recorrencia')
+        
+        # Validações básicas
+        if not nome:
+            messages.error(request, 'Nome da campanha é obrigatório')
+            return redirect('emails:criar_campanha')
+        
+        if not template_email_id:
+            messages.error(request, 'Template de email é obrigatório')
+            return redirect('emails:criar_campanha')
+        
+        if not configuracao_servidor_id:
+            messages.error(request, 'Configuração SMTP é obrigatória')
+            return redirect('emails:criar_campanha')
+        
+        # ====================================================================================
+        # IMPORTAÇÃO DE LEADS (FORA DO TRANSACTION.ATOMIC PARA EVITAR PROBLEMAS)
+        # ====================================================================================
+        base_leads_obj = None
+        if fonte_dados == 'leads':
+            # Verificar se foi enviado um arquivo CSV novo
+            if 'arquivo_csv' in request.FILES:
+                arquivo_csv = request.FILES['arquivo_csv']
+                
+                # Validar extensão
+                if not arquivo_csv.name.lower().endswith('.csv'):
+                    messages.error(request, 'Arquivo deve ser um CSV (.csv)')
+                    return redirect('emails:criar_campanha')
+                
+                # Extrair colunas do CSV
+                try:
+                    colunas, primeira_linha, total_linhas = ServicoImportacaoCSV.extrair_colunas(arquivo_csv)
+                except Exception as e:
+                    messages.error(request, f'Erro ao processar arquivo CSV: {str(e)}')
+                    return redirect('emails:criar_campanha')
+                
+                if not colunas:
+                    messages.error(request, 'Nenhuma coluna encontrada no arquivo CSV')
+                    return redirect('emails:criar_campanha')
+                
+                # Obter mapeamento do formulário
+                coluna_email = request.POST.get('coluna_email_leads')
+                coluna_nome = request.POST.get('coluna_nome_leads')
+                
+                if not coluna_email or not coluna_nome:
+                    messages.error(request, 'É necessário mapear as colunas de email e nome do CSV')
+                    # Redesenhar formulário com dados do CSV
+                    context = {
+                        'templates_email': TemplateEmail.objects.filter(ativo=True),
+                        'configuracoes_servidor': ConfiguracaoServidorEmail.objects.filter(ativo=True),
+                        'templates_sql': TemplateSQL.objects.filter(ativo=True),
+                        'execucoes_recentes': ConsultaExecucao.objects.filter(status='concluida').order_by('-data_fim')[:10],
+                        'credenciais_banco': CredenciaisBancoDados.objects.filter(ativo=True),
+                        'credenciais_hubsoft': CredenciaisHubsoft.objects.filter(ativo=True),
+                        'bases_leads': BaseLeads.objects.filter(ativo=True).order_by('-data_importacao'),
+                        'tipo_agendamento_choices': CampanhaEmail.TIPO_AGENDAMENTO_CHOICES,
+                        'csv_uploaded': True,
+                        'csv_colunas': colunas,
+                        'csv_preview': ServicoImportacaoCSV.obter_preview_dados(arquivo_csv, limite=5),
+                        'csv_total_linhas': total_linhas,
+                        'csv_arquivo_nome': arquivo_csv.name,
+                        'form_data': {
+                            'nome': nome,
+                            'descricao': descricao,
+                            'template_email_id': template_email_id,
+                            'configuracao_servidor_id': configuracao_servidor_id,
+                        }
+                    }
+                    # Salvar arquivo temporariamente na sessão
+                    arquivo_csv.seek(0)
+                    request.session['csv_temp_arquivo'] = arquivo_csv.read()
+                    request.session['csv_temp_nome'] = arquivo_csv.name
+                    return render(request, 'emails/criar_campanha.html', context)
+                
+                # Criar arquivo temporário a partir do upload
+                from io import BytesIO
+                arquivo_csv.seek(0)
+                arquivo_temp = BytesIO(arquivo_csv.read())
+                arquivo_temp.name = arquivo_csv.name
+                
+                # Importar leads e criar base (COM SEU PRÓPRIO TRANSACTION.ATOMIC)
+                try:
+                    nome_base = f"Campanha: {nome} - {timezone.now().strftime('%d/%m/%Y %H:%M')}"
+                    with transaction.atomic():
+                        base_leads_obj = ServicoImportacaoCSV.importar_leads(
+                            arquivo=arquivo_temp,
+                            nome_base=nome_base,
+                            descricao=f"Base criada automaticamente para campanha: {nome}",
+                            coluna_email=coluna_email,
+                            coluna_nome=coluna_nome
+                        )
+                    base_leads_id = base_leads_obj.id
+                    messages.success(
+                        request, 
+                        f'✅ CSV importado com sucesso! {base_leads_obj.total_validos} lead(s) válido(s) importado(s).'
+                    )
+                except ValidationError as e:
+                    messages.error(request, str(e))
+                    return redirect('emails:criar_campanha')
+                except Exception as e:
+                    logger.error(f'Erro ao importar CSV: {str(e)}')
+                    messages.error(request, f'Erro ao importar CSV: {str(e)}')
+                    return redirect('emails:criar_campanha')
+            elif base_leads_id:
+                # Usar base existente
+                try:
+                    base_leads_obj = BaseLeads.objects.get(id=base_leads_id)
+                except BaseLeads.DoesNotExist:
+                    messages.error(request, 'Base de leads selecionada não encontrada')
+                    return redirect('emails:criar_campanha')
+            else:
+                messages.error(request, 'É necessário selecionar uma base de leads existente ou fazer upload de um novo CSV')
+                return redirect('emails:criar_campanha')
+        
+        if fonte_dados == 'sql' and not template_sql_id:
+            messages.error(request, 'Template SQL é obrigatório quando fonte é SQL')
+            return redirect('emails:criar_campanha')
+            
+        if fonte_dados == 'execucao' and not consulta_execucao_id:
+            messages.error(request, 'Consulta Execução é obrigatória quando fonte é execução existente')
+            return redirect('emails:criar_campanha')
+        
+        # Preparar data de agendamento
+        if executar_imediatamente:
+            data_agendamento_obj = timezone.now()
+            status_inicial = 'agendada'
+        elif data_agendamento:
+            data_agendamento_obj = datetime.strptime(data_agendamento, '%Y-%m-%dT%H:%M')
+            if timezone.is_naive(data_agendamento_obj):
+                data_agendamento_obj = timezone.make_aware(data_agendamento_obj)
+            status_inicial = 'agendada'
+        else:
+            data_agendamento_obj = None
+            status_inicial = 'rascunho'
+        
+        # Processar configurações de recorrência
+        hora_execucao_obj = None
+        if hora_execucao_str:
+            try:
+                hora_execucao_obj = datetime.strptime(hora_execucao_str, '%H:%M').time()
+            except ValueError:
+                pass
+        
+        data_fim_recorrencia_obj = None
+        if data_fim_recorrencia_str:
+            try:
+                data_fim_recorrencia_obj = datetime.strptime(data_fim_recorrencia_str, '%Y-%m-%dT%H:%M')
+                if timezone.is_naive(data_fim_recorrencia_obj):
+                    data_fim_recorrencia_obj = timezone.make_aware(data_fim_recorrencia_obj)
+            except ValueError:
+                pass
+        
+        dias_semana_str = ','.join(dias_semana_list) if dias_semana_list else ''
+        
+        # ====================================================================================
+        # CRIAR CAMPANHA (COM TRANSACTION.ATOMIC SEPARADO)
+        # ====================================================================================
         try:
             with transaction.atomic():
-                # Obter dados do formulário
-                nome = request.POST.get('nome')
-                descricao = request.POST.get('descricao', '')
-                template_email_id = request.POST.get('template_email')
-                configuracao_servidor_id = request.POST.get('configuracao_servidor')
-                
-                # Fonte de dados (SQL ou Execução existente)
-                fonte_dados = request.POST.get('fonte_dados')  # 'sql' ou 'execucao'
-                template_sql_id = request.POST.get('template_sql')
-                consulta_execucao_id = request.POST.get('consulta_execucao')
-                
-                # Configurações SQL + API
-                pular_consulta_api = request.POST.get('pular_consulta_api') == 'on'
-                credencial_hubsoft_id = request.POST.get('credencial_hubsoft')
-                credencial_banco_id = request.POST.get('credencial_banco')
-                
-                # Variáveis SQL
-                valores_variaveis_sql = {}
-                if fonte_dados == 'sql' and template_sql_id:
-                    # Debug: mostrar todos os parâmetros POST
-                    print(f"DEBUG - Parâmetros POST recebidos:")
-                    for key, value in request.POST.items():
-                        if key.startswith('var_'):
-                            print(f"  {key} = {value}")
-                    
-                    # Coletar valores das variáveis SQL do formulário
-                    for key, value in request.POST.items():
-                        if key.startswith('var_'):
-                            var_name = key[4:]  # Remove prefixo 'var_'
-                            if value.strip():  # Só adiciona se não estiver vazio
-                                valores_variaveis_sql[var_name] = value.strip()
-                    
-                    print(f"DEBUG - Variáveis SQL coletadas: {valores_variaveis_sql}")
-                    
-                    # Verificar se o template tem variáveis esperadas
-                    if template_sql_id:
-                        template_sql = TemplateSQL.objects.get(id=template_sql_id)
-                        
-                        # USAR O MESMO MÉTODO DO APP CAMPANHAS
-                        variaveis_config = template_sql.get_variaveis_configuradas()
-                        print(f"DEBUG - Configuração de variáveis: {variaveis_config}")
-                        
-                        # Reprocessar usando a mesma lógica do app campanhas
-                        valores_variaveis_sql_corrigido = {}
-                        for var_name, config in variaveis_config.items():
-                            valor = request.POST.get(f'var_{var_name}')
-                            
-                            if config.get('obrigatorio', True) and not valor:
-                                print(f"DEBUG - ERRO: Variável obrigatória '{var_name}' não fornecida")
-                            
-                            # Usar valor padrão se não fornecido e não obrigatório
-                            if not valor and not config.get('obrigatorio', True):
-                                valor = config.get('valor_padrao', '')
-                            
-                            if valor:
-                                valores_variaveis_sql_corrigido[var_name] = valor
-                        
-                        # Atualizar com os valores corrigidos
-                        valores_variaveis_sql = valores_variaveis_sql_corrigido
-                        print(f"DEBUG - Variáveis SQL corrigidas: {valores_variaveis_sql}")
-                
-                # Tipo de agendamento
-                tipo_agendamento = request.POST.get('tipo_agendamento', 'uma_vez')
-                data_agendamento = request.POST.get('data_agendamento')
-                executar_imediatamente = request.POST.get('executar_imediatamente') == 'on'
-                
-                # Configurações de recorrência
-                intervalo_recorrencia = int(request.POST.get('intervalo_recorrencia', 1))
-                hora_execucao_str = request.POST.get('hora_execucao') or request.POST.get('hora_execucao_semanal') or request.POST.get('hora_execucao_mensal')
-                dias_semana_list = request.POST.getlist('dias_semana')
-                dia_mes_recorrencia = request.POST.get('dia_mes_recorrencia')
-                expressao_cron = request.POST.get('expressao_cron', '')
-                data_fim_recorrencia_str = request.POST.get('data_fim_recorrencia')
-                
-                # Validações básicas
-                if not nome:
-                    messages.error(request, 'Nome da campanha é obrigatório')
-                    return redirect('emails:criar_campanha')
-                
-                if not template_email_id:
-                    messages.error(request, 'Template de email é obrigatório')
-                    return redirect('emails:criar_campanha')
-                
-                if not configuracao_servidor_id:
-                    messages.error(request, 'Configuração SMTP é obrigatória')
-                    return redirect('emails:criar_campanha')
-                
-                if fonte_dados == 'sql' and not template_sql_id:
-                    messages.error(request, 'Template SQL é obrigatório quando fonte é SQL')
-                    return redirect('emails:criar_campanha')
-                    
-                if fonte_dados == 'execucao' and not consulta_execucao_id:
-                    messages.error(request, 'Consulta Execução é obrigatória quando fonte é execução existente')
-                    return redirect('emails:criar_campanha')
-                
-                # Preparar data de agendamento
-                if executar_imediatamente:
-                    data_agendamento_obj = timezone.now()
-                    status_inicial = 'agendada'
-                elif data_agendamento:
-                    data_agendamento_obj = datetime.strptime(data_agendamento, '%Y-%m-%dT%H:%M')
-                    if timezone.is_naive(data_agendamento_obj):
-                        data_agendamento_obj = timezone.make_aware(data_agendamento_obj)
-                    status_inicial = 'agendada'
-                else:
-                    data_agendamento_obj = None
-                    status_inicial = 'rascunho'
-                
-                # Processar configurações de recorrência
-                hora_execucao_obj = None
-                if hora_execucao_str:
-                    try:
-                        hora_execucao_obj = datetime.strptime(hora_execucao_str, '%H:%M').time()
-                    except ValueError:
-                        pass
-                
-                data_fim_recorrencia_obj = None
-                if data_fim_recorrencia_str:
-                    try:
-                        data_fim_recorrencia_obj = datetime.strptime(data_fim_recorrencia_str, '%Y-%m-%dT%H:%M')
-                        if timezone.is_naive(data_fim_recorrencia_obj):
-                            data_fim_recorrencia_obj = timezone.make_aware(data_fim_recorrencia_obj)
-                    except ValueError:
-                        pass
-                
-                dias_semana_str = ','.join(dias_semana_list) if dias_semana_list else ''
-                
                 # Criar campanha
                 campanha = CampanhaEmail.objects.create(
                     nome=nome,
                     descricao=descricao,
                     template_email_id=template_email_id,
                     configuracao_servidor_id=configuracao_servidor_id,
+                    tipo_fonte=tipo_fonte,
                     template_sql_id=template_sql_id if fonte_dados == 'sql' else None,
                     consulta_execucao_id=consulta_execucao_id if fonte_dados == 'execucao' else None,
+                    base_leads=base_leads_obj if fonte_dados == 'leads' else None,
                     valores_variaveis_sql=valores_variaveis_sql,
                     pular_consulta_api=pular_consulta_api,
                     credencial_hubsoft_id=credencial_hubsoft_id if not pular_consulta_api else None,
-                    credencial_banco_id=credencial_banco_id,
+                    credencial_banco_id=credencial_banco_id if fonte_dados == 'sql' else None,
                     tipo_agendamento=tipo_agendamento,
                     data_agendamento=data_agendamento_obj,
                     # Campos de recorrência
@@ -291,53 +433,57 @@ def criar_campanha_email(request):
                 # Calcular próxima execução para campanhas recorrentes
                 if tipo_agendamento != 'unico':
                     campanha.atualizar_proxima_execucao()
+            
+            # TRANSACTION.ATOMIC TERMINA AQUI
+            # Processamento em background FORA do atomic para evitar locks
+            
+            # INICIAR PROCESSAMENTO EM BACKGROUND
+            if campanha.tipo_fonte == 'leads' or campanha.template_sql or campanha.consulta_execucao:
+                # Atualizar status para processando
+                campanha.status = 'processando'
+                campanha.save()
                 
-                # INICIAR PROCESSAMENTO EM BACKGROUND
-                if campanha.template_sql or campanha.consulta_execucao:
-                    # Atualizar status para processando
-                    campanha.status = 'processando'
-                    campanha.save()
-                    
-                    # Executar processamento em background
-                    import threading
-                    def processar_campanha_background():
-                        try:
-                            from .executor_integrado import ExecutorCampanhaIntegrado
+                # Executar processamento em background
+                import threading
+                def processar_campanha_background():
+                    try:
+                        from .executor_integrado import ExecutorCampanhaIntegrado
+                        
+                        executor = ExecutorCampanhaIntegrado(campanha)
+                        dados_clientes = executor._obter_dados_clientes_integrado()
+                        
+                        if dados_clientes:
+                            campanha.total_destinatarios = len(dados_clientes)
+                            campanha.status = 'agendada' if not executar_imediatamente else 'executando'
+                            campanha.save()
                             
-                            executor = ExecutorCampanhaIntegrado(campanha)
-                            dados_clientes = executor._obter_dados_clientes_integrado()
-                            
-                            if dados_clientes:
-                                campanha.total_destinatarios = len(dados_clientes)
-                                campanha.status = 'agendada' if not executar_imediatamente else 'executando'
-                                campanha.save()
-                                
-                                # Executar campanha se solicitado
-                                if executar_imediatamente:
-                                    from .executor_integrado import iniciar_campanha_email_async
-                                    campanha.atualizar_status('executando', 'Execução iniciada automaticamente após criação')
-                                    iniciar_campanha_email_async(campanha.id)
-                            else:
-                                campanha.status = 'erro'
-                                campanha.save()
-                                
-                        except Exception as e:
+                            # Executar campanha se solicitado
+                            if executar_imediatamente:
+                                from .executor_integrado import iniciar_campanha_email_async
+                                campanha.atualizar_status('executando', 'Execução iniciada automaticamente após criação')
+                                iniciar_campanha_email_async(campanha.id)
+                        else:
                             campanha.status = 'erro'
                             campanha.save()
-                            logger.error(f"Erro ao processar campanha {campanha.id}: {str(e)}")
-                    
-                    # Iniciar thread em background
-                    thread = threading.Thread(target=processar_campanha_background)
-                    thread.daemon = True
-                    thread.start()
-                    
-                    messages.success(request, f'Campanha "{nome}" criada! O processamento dos dados foi iniciado em background.')
-                else:
-                    messages.success(request, f'Campanha "{nome}" criada como rascunho!')
+                            
+                    except Exception as e:
+                        campanha.status = 'erro'
+                        campanha.save()
+                        logger.error(f"Erro ao processar campanha {campanha.id}: {str(e)}")
                 
-                return redirect('emails:detalhe_campanha', campanha_id=campanha.id)
+                # Iniciar thread em background
+                thread = threading.Thread(target=processar_campanha_background)
+                thread.daemon = True
+                thread.start()
                 
+                messages.success(request, f'Campanha "{nome}" criada! O processamento dos dados foi iniciado em background.')
+            else:
+                messages.success(request, f'Campanha "{nome}" criada como rascunho!')
+            
+            return redirect('emails:detalhe_campanha', campanha_id=campanha.id)
+            
         except Exception as e:
+            logger.error(f'Erro ao criar campanha: {str(e)}')
             messages.error(request, f'Erro ao criar campanha: {str(e)}')
             return redirect('emails:criar_campanha')
     
@@ -353,6 +499,15 @@ def criar_campanha_email(request):
     execucoes_recentes = ConsultaExecucao.objects.filter(
         status='concluida'
     ).order_by('-data_fim')[:10]
+    
+    # NOVO: Bases de leads disponíveis
+    bases_leads = BaseLeads.objects.filter(ativo=True).order_by('-data_importacao')
+    
+    # Pre-selecionar base se veio via query parameter
+    base_leads_presel = request.GET.get('base_leads')
+    
+    # Bases de leads disponíveis
+    bases_leads = BaseLeads.objects.filter(ativo=True).order_by('-data_importacao')
     
     # DEBUG: Log para verificar dados
     print(f"🔍 DEBUG CRIAR CAMPANHA:")
@@ -382,6 +537,7 @@ def criar_campanha_email(request):
         'execucoes_recentes': execucoes_recentes,
         'credenciais_banco': credenciais_banco,
         'credenciais_hubsoft': credenciais_hubsoft,
+        'bases_leads': bases_leads,
         'tipo_agendamento_choices': CampanhaEmail.TIPO_AGENDAMENTO_CHOICES,
     }
     
@@ -1568,3 +1724,659 @@ def api_detalhe_template_email(request, template_id):
             'success': False,
             'error': f'Erro interno: {str(e)}'
         }, status=500)
+
+
+# ==========================================
+# VIEWS PARA GESTÃO DE LEADS (CSV)
+# ==========================================
+
+def listar_bases_leads(request):
+    """Lista todas as bases de leads importadas"""
+    
+    search = request.GET.get('search', '')
+    
+    bases = BaseLeads.objects.all()
+    
+    if search:
+        bases = bases.filter(
+            Q(nome__icontains=search) |
+            Q(descricao__icontains=search) |
+            Q(arquivo_original_nome__icontains=search)
+        )
+    
+    bases = bases.order_by('-data_importacao')
+    
+    # Paginação
+    paginator = Paginator(bases, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Estatísticas gerais
+    stats = {
+        'total_bases': BaseLeads.objects.count(),
+        'bases_ativas': BaseLeads.objects.filter(ativo=True).count(),
+        'total_leads': Lead.objects.filter(valido=True).count(),
+    }
+    
+    context = {
+        'page_obj': page_obj,
+        'stats': stats,
+        'search': search,
+    }
+    
+    return render(request, 'emails/listar_bases_leads.html', context)
+
+
+def importar_leads_csv(request):
+    """
+    View para upload e importação de CSV de leads
+    Processo em 2 etapas:
+    1. Upload e análise do arquivo (mostra preview e sugestões)
+    2. Confirmação e importação com mapeamento de colunas
+    """
+    
+    if request.method == 'POST':
+        etapa = request.POST.get('etapa', '1')
+        
+        if etapa == '1':
+            # ETAPA 1: Upload e análise do arquivo
+            try:
+                arquivo = request.FILES.get('arquivo_csv')
+                
+                if not arquivo:
+                    messages.error(request, 'Nenhum arquivo foi enviado')
+                    return redirect('emails:importar_leads')
+                
+                # Validar extensão
+                if not arquivo.name.endswith(('.csv', '.CSV')):
+                    messages.error(request, 'Apenas arquivos CSV são permitidos')
+                    return redirect('emails:importar_leads')
+                
+                # Analisar CSV
+                servico = ServicoImportacaoCSV()
+                analise = servico.obter_sugestoes_colunas(arquivo)
+                
+                # Salvar arquivo temporariamente na sessão (como base64)
+                import base64
+                arquivo.seek(0)
+                arquivo_bytes = arquivo.read()
+                arquivo_b64 = base64.b64encode(arquivo_bytes).decode('utf-8')
+                
+                request.session['arquivo_csv_temp'] = {
+                    'nome': arquivo.name,
+                    'conteudo': arquivo_b64,
+                    'encoding': analise['encoding'],
+                    'delimitador': analise['delimitador']
+                }
+                
+                # Ir para etapa 2 (mapeamento)
+                context = {
+                    'etapa': 2,
+                    'arquivo_nome': arquivo.name,
+                    'colunas': analise['colunas'],
+                    'sugestao_email': analise['sugestao_email'],
+                    'sugestao_nome': analise['sugestao_nome'],
+                    'preview': analise['preview'],
+                    'encoding': analise['encoding'],
+                    'delimitador': analise['delimitador'],
+                }
+                
+                return render(request, 'emails/importar_leads.html', context)
+                
+            except Exception as e:
+                messages.error(request, f'Erro ao processar arquivo: {str(e)}')
+                return redirect('emails:importar_leads')
+        
+        elif etapa == '2':
+            # ETAPA 2: Confirmar importação com mapeamento
+            try:
+                # Recuperar arquivo da sessão
+                arquivo_temp = request.session.get('arquivo_csv_temp')
+                if not arquivo_temp:
+                    messages.error(request, 'Sessão expirou. Por favor, faça upload do arquivo novamente.')
+                    return redirect('emails:importar_leads')
+                
+                # Obter parâmetros do formulário
+                nome_base = request.POST.get('nome_base')
+                descricao = request.POST.get('descricao', '')
+                coluna_email = request.POST.get('coluna_email')
+                coluna_nome = request.POST.get('coluna_nome')
+                
+                if not all([nome_base, coluna_email, coluna_nome]):
+                    messages.error(request, 'Nome da base, coluna de email e coluna de nome são obrigatórios')
+                    return redirect('emails:importar_leads')
+                
+                # Reconstruir arquivo do base64
+                import base64
+                from django.core.files.uploadedfile import InMemoryUploadedFile
+                
+                arquivo_bytes = base64.b64decode(arquivo_temp['conteudo'])
+                arquivo = InMemoryUploadedFile(
+                    file=io.BytesIO(arquivo_bytes),
+                    field_name='arquivo_csv',
+                    name=arquivo_temp['nome'],
+                    content_type='text/csv',
+                    size=len(arquivo_bytes),
+                    charset=None
+                )
+                
+                # Importar leads
+                base_leads = importar_leads_de_csv(
+                    arquivo, nome_base, coluna_email, coluna_nome, descricao
+                )
+                
+                # Limpar sessão
+                del request.session['arquivo_csv_temp']
+                
+                messages.success(
+                    request, 
+                    f'Base "{nome_base}" importada com sucesso! '
+                    f'{base_leads.total_validos} leads válidos, {base_leads.total_invalidos} inválidos.'
+                )
+                
+                return redirect('emails:detalhe_base_leads', base_id=base_leads.id)
+                
+            except Exception as e:
+                messages.error(request, f'Erro ao importar leads: {str(e)}')
+                return redirect('emails:importar_leads')
+    
+    # GET - Mostrar formulário inicial
+    context = {
+        'etapa': 1,
+    }
+    
+    return render(request, 'emails/importar_leads.html', context)
+
+
+def detalhe_base_leads(request, base_id):
+    """Exibe detalhes de uma base de leads"""
+    
+    base = get_object_or_404(BaseLeads, id=base_id)
+    
+    # Leads da base (paginados)
+    leads = Lead.objects.filter(base_leads=base).order_by('-valido', 'linha_original')
+    
+    # Filtros
+    valido_filter = request.GET.get('valido', '')
+    search = request.GET.get('search', '')
+    
+    if valido_filter == 'sim':
+        leads = leads.filter(valido=True)
+    elif valido_filter == 'nao':
+        leads = leads.filter(valido=False)
+    
+    if search:
+        leads = leads.filter(
+            Q(nome__icontains=search) |
+            Q(email__icontains=search)
+        )
+    
+    # Paginação
+    paginator = Paginator(leads, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Estatísticas
+    stats = {
+        'total_leads': base.total_leads,
+        'total_validos': base.total_validos,
+        'total_invalidos': base.total_invalidos,
+        'taxa_validos': base.get_taxa_validos(),
+        'campanhas_usando': CampanhaEmail.objects.filter(base_leads=base).count(),
+    }
+    
+    context = {
+        'base': base,
+        'page_obj': page_obj,
+        'stats': stats,
+        'valido_filter': valido_filter,
+        'search': search,
+    }
+    
+    return render(request, 'emails/detalhe_base_leads.html', context)
+
+
+def excluir_base_leads(request, base_id):
+    """Exclui uma base de leads"""
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        base = get_object_or_404(BaseLeads, id=base_id)
+        
+        # Verificar se há campanhas usando esta base
+        campanhas_ativas = CampanhaEmail.objects.filter(
+            base_leads=base,
+            ativo=True,
+            status__in=['agendada', 'executando']
+        ).count()
+        
+        if campanhas_ativas > 0:
+            return JsonResponse({
+                'error': f'Não é possível excluir. Existem {campanhas_ativas} campanha(s) ativa(s) usando esta base.'
+            }, status=400)
+        
+        nome_base = base.nome
+        base.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Base "{nome_base}" excluída com sucesso'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def exportar_base_leads(request, base_id):
+    """Exporta uma base de leads para CSV"""
+    
+    base = get_object_or_404(BaseLeads, id=base_id)
+    
+    # Criar response CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="base_leads_{base.id}_{timezone.now().strftime("%Y%m%d_%H%M")}.csv"'
+    
+    # Escrever BOM para UTF-8
+    response.write('\ufeff')
+    
+    import csv
+    writer = csv.writer(response, delimiter=';')
+    
+    # Cabeçalho (usar colunas originais)
+    colunas_header = ['Email', 'Nome', 'Status'] + [
+        col for col in base.colunas_disponiveis 
+        if col not in [base.coluna_email, base.coluna_nome]
+    ]
+    writer.writerow(colunas_header)
+    
+    # Dados
+    leads = Lead.objects.filter(base_leads=base).order_by('linha_original')
+    
+    for lead in leads:
+        linha = [
+            lead.email,
+            lead.nome,
+            'Válido' if lead.valido else f'Inválido: {lead.motivo_invalido}'
+        ]
+        
+        # Adicionar dados adicionais
+        for coluna in base.colunas_disponiveis:
+            if coluna not in [base.coluna_email, base.coluna_nome]:
+                linha.append(lead.dados_adicionais.get(coluna, ''))
+        
+        writer.writerow(linha)
+    
+    return response
+
+
+def preview_csv_ajax(request):
+    """
+    API AJAX para analisar CSV e retornar sugestões de colunas
+    Usado na etapa 1 da importação para dar feedback instantâneo
+    """
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        arquivo = request.FILES.get('arquivo_csv')
+        
+        if not arquivo:
+            return JsonResponse({'error': 'Nenhum arquivo enviado'}, status=400)
+        
+        # Analisar arquivo
+        servico = ServicoImportacaoCSV()
+        analise = servico.obter_sugestoes_colunas(arquivo)
+        
+        return JsonResponse({
+            'success': True,
+            'colunas': analise['colunas'],
+            'sugestao_email': analise['sugestao_email'],
+            'sugestao_nome': analise['sugestao_nome'],
+            'preview': analise['preview'],
+            'encoding': analise['encoding'],
+            'delimitador': analise['delimitador'],
+            'total_linhas_preview': analise['total_linhas_preview']
+        })
+        
+    except Exception as e:
+        logger.error(f'Erro ao fazer preview do CSV: {str(e)}')
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def validar_mapeamento_ajax(request):
+    """
+    API AJAX para validar mapeamento de colunas antes de importar
+    """
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        # Recuperar arquivo da sessão
+        arquivo_temp = request.session.get('arquivo_csv_temp')
+        if not arquivo_temp:
+            return JsonResponse({
+                'error': 'Sessão expirou. Faça upload do arquivo novamente.'
+            }, status=400)
+        
+        # Parâmetros
+        coluna_email = request.POST.get('coluna_email')
+        coluna_nome = request.POST.get('coluna_nome')
+        
+        if not coluna_email or not coluna_nome:
+            return JsonResponse({
+                'error': 'Coluna de email e nome são obrigatórias'
+            }, status=400)
+        
+        # Reconstruir arquivo
+        import base64
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+        
+        arquivo_bytes = base64.b64decode(arquivo_temp['conteudo'])
+        arquivo = InMemoryUploadedFile(
+            file=io.BytesIO(arquivo_bytes),
+            field_name='arquivo_csv',
+            name=arquivo_temp['nome'],
+            content_type='text/csv',
+            size=len(arquivo_bytes),
+            charset=None
+        )
+        
+        # Validar
+        servico = ServicoImportacaoCSV()
+        resultado = servico.validar_csv(arquivo, coluna_email, coluna_nome)
+        
+        return JsonResponse({
+            'success': True,
+            'validacao': resultado
+        })
+        
+    except Exception as e:
+        logger.error(f'Erro ao validar mapeamento: {str(e)}')
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ==================== VIEWS PARA LEADS (CSV) ====================
+
+def listar_bases_leads(request):
+    """Lista todas as bases de leads importadas"""
+    
+    # Filtros
+    search = request.GET.get('search', '')
+    ativo_filter = request.GET.get('ativo', '')
+    
+    # Query base
+    bases = BaseLeads.objects.all()
+    
+    # Aplicar filtros
+    if search:
+        bases = bases.filter(
+            Q(nome__icontains=search) |
+            Q(descricao__icontains=search) |
+            Q(arquivo_original_nome__icontains=search)
+        )
+    
+    if ativo_filter.lower() == 'true':
+        bases = bases.filter(ativo=True)
+    elif ativo_filter.lower() == 'false':
+        bases = bases.filter(ativo=False)
+    
+    # Ordenação
+    bases = bases.order_by('-data_importacao')
+    
+    # Paginação
+    paginator = Paginator(bases, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Estatísticas gerais
+    stats = {
+        'total_bases': BaseLeads.objects.count(),
+        'bases_ativas': BaseLeads.objects.filter(ativo=True).count(),
+        'total_leads': Lead.objects.filter(valido=True).count(),
+        'total_leads_invalidos': Lead.objects.filter(valido=False).count(),
+    }
+    
+    context = {
+        'page_obj': page_obj,
+        'stats': stats,
+        'search': search,
+        'ativo_filter': ativo_filter,
+    }
+    
+    return render(request, 'emails/listar_bases_leads.html', context)
+
+
+def importar_leads_csv(request):
+    """View para upload e processamento inicial de CSV"""
+    
+    if request.method == 'POST':
+        # Verificar se é mapeamento de colunas (POST com coluna_email e coluna_nome)
+        if 'coluna_email' in request.POST and 'coluna_nome' in request.POST:
+            # Processar mapeamento e importar
+            try:
+                # Obter dados da sessão
+                nome = request.session.get('csv_import_nome', '')
+                descricao = request.session.get('csv_import_descricao', '')
+                colunas = request.session.get('csv_import_colunas', [])
+                arquivo_nome = request.session.get('csv_import_arquivo_nome', 'arquivo.csv')
+                arquivo_conteudo = request.session.get('csv_import_arquivo_conteudo')
+                
+                if not arquivo_conteudo:
+                    messages.error(request, 'Dados da sessão expirados. Por favor, faça o upload novamente.')
+                    return redirect('emails:importar_leads')
+                
+                # Obter mapeamento do formulário
+                coluna_email = request.POST.get('coluna_email')
+                coluna_nome = request.POST.get('coluna_nome')
+                
+                if not coluna_email or not coluna_nome:
+                    messages.error(request, 'É necessário mapear as colunas de email e nome')
+                    # Redesenhar página de mapeamento
+                    context = {
+                        'colunas': colunas,
+                        'preview': request.session.get('csv_import_preview', []),
+                        'total_linhas': request.session.get('csv_import_total_linhas', 0),
+                        'arquivo_nome': arquivo_nome,
+                    }
+                    return render(request, 'emails/mapear_colunas_csv.html', context)
+                
+                # Criar arquivo temporário a partir do conteúdo da sessão
+                from io import BytesIO
+                arquivo = BytesIO(arquivo_conteudo)
+                arquivo.name = arquivo_nome
+                
+                # Importar leads (com transaction.atomic para garantir atomicidade)
+                try:
+                    with transaction.atomic():
+                        base_leads = ServicoImportacaoCSV.importar_leads(
+                            arquivo=arquivo,
+                            nome_base=nome or 'Base de Leads',
+                            descricao=descricao,
+                            coluna_email=coluna_email,
+                            coluna_nome=coluna_nome
+                        )
+                    
+                    # Limpar sessão
+                    for key in ['csv_import_nome', 'csv_import_descricao', 'csv_import_colunas',
+                               'csv_import_preview', 'csv_import_total_linhas', 'csv_import_arquivo_nome',
+                               'csv_import_arquivo_conteudo']:
+                        request.session.pop(key, None)
+                    
+                    messages.success(
+                        request,
+                        f'✅ Base de leads importada com sucesso! {base_leads.total_validos} lead(s) válido(s) importado(s). '
+                        f'Linhas com problemas foram automaticamente descartadas.'
+                    )
+                    return redirect('emails:detalhe_base_leads', base_id=base_leads.id)
+                    
+                except ValidationError as e:
+                    messages.error(request, str(e))
+                    context = {
+                        'colunas': colunas,
+                        'preview': request.session.get('csv_import_preview', []),
+                        'total_linhas': request.session.get('csv_import_total_linhas', 0),
+                        'arquivo_nome': arquivo_nome,
+                    }
+                    return render(request, 'emails/mapear_colunas_csv.html', context)
+                except Exception as e:
+                    logger.error(f'Erro na importação: {str(e)}')
+                    messages.error(request, f'Erro ao importar leads: {str(e)}')
+                    return redirect('emails:importar_leads')
+                    
+            except Exception as e:
+                logger.error(f'Erro no mapeamento: {str(e)}')
+                messages.error(request, f'Erro ao processar mapeamento: {str(e)}')
+                return redirect('emails:importar_leads')
+        
+        # POST inicial - upload do arquivo
+        try:
+            # Verificar se arquivo foi enviado
+            if 'arquivo_csv' not in request.FILES:
+                messages.error(request, 'Arquivo CSV é obrigatório')
+                return redirect('emails:importar_leads')
+            
+            arquivo = request.FILES['arquivo_csv']
+            
+            # Validar extensão
+            if not arquivo.name.lower().endswith('.csv'):
+                messages.error(request, 'Arquivo deve ser um CSV (.csv)')
+                return redirect('emails:importar_leads')
+            
+            # Extrair colunas do CSV
+            try:
+                colunas, primeira_linha, total_linhas = ServicoImportacaoCSV.extrair_colunas(arquivo)
+            except Exception as e:
+                messages.error(request, f'Erro ao processar arquivo CSV: {str(e)}')
+                return redirect('emails:importar_leads')
+            
+            if not colunas:
+                messages.error(request, 'Nenhuma coluna encontrada no arquivo CSV')
+                return redirect('emails:importar_leads')
+            
+            # Obter preview dos dados
+            preview = ServicoImportacaoCSV.obter_preview_dados(arquivo, limite=10)
+            
+            # Salvar arquivo temporariamente na sessão para processamento posterior
+            # (em produção, considere usar storage temporário)
+            request.session['csv_import_nome'] = request.POST.get('nome', '')
+            request.session['csv_import_descricao'] = request.POST.get('descricao', '')
+            request.session['csv_import_colunas'] = colunas
+            request.session['csv_import_preview'] = preview
+            request.session['csv_import_total_linhas'] = total_linhas
+            request.session['csv_import_arquivo_nome'] = arquivo.name
+            
+            # Salvar arquivo em memória para próxima etapa
+            arquivo.seek(0)
+            arquivo_content = arquivo.read()
+            request.session['csv_import_arquivo_conteudo'] = arquivo_content
+            
+            context = {
+                'colunas': colunas,
+                'preview': preview,
+                'total_linhas': total_linhas,
+                'arquivo_nome': arquivo.name,
+            }
+            
+            return render(request, 'emails/mapear_colunas_csv.html', context)
+            
+        except Exception as e:
+            logger.error(f'Erro na importação de CSV: {str(e)}')
+            messages.error(request, f'Erro ao processar arquivo: {str(e)}')
+            return redirect('emails:importar_leads')
+    
+    # GET - mostrar formulário de upload
+    return render(request, 'emails/importar_leads.html')
+
+
+
+
+def detalhe_base_leads(request, base_id):
+    """Detalhes de uma base de leads"""
+    
+    base = get_object_or_404(BaseLeads, id=base_id)
+    
+    # Leads válidos e inválidos
+    leads_validos = Lead.objects.filter(base_leads=base, valido=True).order_by('linha_original')
+    leads_invalidos = Lead.objects.filter(base_leads=base, valido=False).order_by('linha_original')
+    
+    # Paginação
+    paginator_validos = Paginator(leads_validos, 50)
+    page_validos = request.GET.get('page_validos', 1)
+    page_obj_validos = paginator_validos.get_page(page_validos)
+    
+    paginator_invalidos = Paginator(leads_invalidos, 50)
+    page_invalidos = request.GET.get('page_invalidos', 1)
+    page_obj_invalidos = paginator_invalidos.get_page(page_invalidos)
+    
+    # Campanhas que usam esta base
+    campanhas = CampanhaEmail.objects.filter(base_leads=base)
+    
+    context = {
+        'base': base,
+        'page_obj_validos': page_obj_validos,
+        'page_obj_invalidos': page_obj_invalidos,
+        'campanhas': campanhas,
+    }
+    
+    return render(request, 'emails/detalhe_base_leads.html', context)
+
+
+def excluir_base_leads(request, base_id):
+    """Exclui uma base de leads"""
+    
+    base = get_object_or_404(BaseLeads, id=base_id)
+    
+    if request.method == 'POST':
+        try:
+            nome_base = base.nome
+            base.delete()
+            messages.success(request, f'Base de leads "{nome_base}" excluída com sucesso!')
+            return redirect('emails:listar_bases_leads')
+        except Exception as e:
+            logger.error(f'Erro ao excluir base: {str(e)}')
+            messages.error(request, f'Erro ao excluir base: {str(e)}')
+            return redirect('emails:detalhe_base_leads', base_id=base_id)
+    
+    context = {
+        'base': base,
+    }
+    
+    return render(request, 'emails/excluir_base_leads.html', context)
+
+
+def exportar_base_leads(request, base_id):
+    """Exporta uma base de leads para CSV"""
+    
+    base = get_object_or_404(BaseLeads, id=base_id)
+    
+    # Buscar apenas leads válidos
+    leads = Lead.objects.filter(base_leads=base, valido=True).order_by('linha_original')
+    
+    # Criar resposta HTTP com CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="base_leads_{base.id}_{base.nome}.csv"'
+    
+    # Escrever CSV
+    import csv
+    writer = csv.writer(response, delimiter=';')
+    
+    # Cabeçalho
+    cabecalho = [base.coluna_nome, base.coluna_email]
+    for coluna in base.colunas_disponiveis:
+        if coluna not in [base.coluna_nome, base.coluna_email]:
+            cabecalho.append(coluna)
+    writer.writerow(cabecalho)
+    
+    # Dados
+    for lead in leads:
+        linha = [lead.nome, lead.email]
+        for coluna in base.colunas_disponiveis:
+            if coluna not in [base.coluna_nome, base.coluna_email]:
+                linha.append(lead.dados_adicionais.get(coluna, ''))
+        writer.writerow(linha)
+    
+    return response

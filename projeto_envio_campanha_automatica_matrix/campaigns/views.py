@@ -70,7 +70,7 @@ def execute_campaign_view(request, campaign_id):
     
     if not campaign.enabled:
         messages.error(request, f'A campanha "{campaign.name}" está desativada!')
-        return redirect('campaign_list')
+        return redirect('native:campaign_list')
     
     # Verificar se já existe execução em andamento
     if campaign.has_running_execution():
@@ -79,13 +79,13 @@ def execute_campaign_view(request, campaign_id):
             f'A campanha "{campaign.name}" já possui uma execução em andamento. '
             'Aguarde a finalização antes de executar novamente.'
         )
-        return redirect('campaign_detail', pk=campaign_id)
+        return redirect('native:campaign_detail', pk=campaign_id)
     
     # Executar de forma assíncrona
     execute_campaign_async(campaign_id)
     
     messages.success(request, f'Campanha "{campaign.name}" iniciada com sucesso!')
-    return redirect('campaign_detail', pk=campaign_id)
+    return redirect('native:campaign_detail', pk=campaign_id)
 
 
 @require_POST
@@ -95,14 +95,14 @@ def execute_multiple_campaigns_view(request):
     
     if not campaign_ids:
         messages.error(request, 'Nenhuma campanha selecionada!')
-        return redirect('campaign_list')
+        return redirect('native:campaign_list')
     
     # Filtrar apenas campanhas ativas
     campaigns = Campaign.objects.filter(id__in=campaign_ids, enabled=True)
     
     if not campaigns.exists():
         messages.error(request, 'Nenhuma campanha ativa selecionada!')
-        return redirect('campaign_list')
+        return redirect('native:campaign_list')
     
     # Filtrar campanhas que NÃO estão em execução
     campaigns_to_execute = []
@@ -132,7 +132,7 @@ def execute_multiple_campaigns_view(request):
     else:
         messages.info(request, 'Todas as campanhas selecionadas já estão em execução.')
     
-    return redirect('campaign_list')
+    return redirect('native:campaign_list')
 
 
 def execution_status_api(request, execution_id):

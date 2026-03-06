@@ -5,6 +5,7 @@ from .models import (
     ConsultaExecucao, ConsultaCliente, CredenciaisBancoDados, MatrixAPIConfig, 
     HSMTemplate, EnvioHSMMatrix, EnvioHSMIndividual, ConfiguracaoPagamentoHSM
 )
+from .models_log import APILog, APILogEstatistica
 
 @admin.register(CredenciaisBancoDados)
 class CredenciaisBancoDadosAdmin(admin.ModelAdmin):
@@ -487,12 +488,53 @@ class EnvioHSMIndividualInline(admin.TabularInline):
 
 @admin.register(EnvioHSMMatrix)
 class EnvioHSMMatrixAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'get_tipo_template', 'hsm_template', 'matrix_api_config', 'status_envio', 'get_progresso', 'total_clientes', 'ativo', 'data_criacao')
-    list_filter = ('status_envio', 'hsm_template__tipo_template', 'hsm_template', 'matrix_api_config', 'ativo')
+    list_display = ('titulo', 'get_tipo_template', 'hsm_template', 'matrix_api_config', 'status_envio', 'get_progresso', 'total_clientes', 'get_midia_status', 'ativo', 'data_criacao')
+    list_filter = ('status_envio', 'hsm_template__tipo_template', 'hsm_template', 'matrix_api_config', 'ativo', 'enviar_com_midia')
     search_fields = ('titulo', 'hsm_template__nome', 'matrix_api_config__nome', 'razao_social_empresa', 'cnpj_empresa')
-    readonly_fields = ('data_criacao', 'data_inicio_envio', 'data_fim_envio', 'get_progresso', 'get_duracao', 'get_tipo_template')
+    readonly_fields = ('data_criacao', 'data_inicio_envio', 'data_fim_envio', 'get_progresso', 'get_duracao', 'get_tipo_template', 'get_midia_preview')
     actions = ['calcular_totais_acao', 'iniciar_envio_acao', 'pausar_envio_acao', 'cancelar_envio_acao']
     inlines = [EnvioHSMIndividualInline]
+    
+    def get_midia_status(self, obj):
+        """Exibe se o envio possui mídia configurada"""
+        if obj.enviar_com_midia:
+            if obj.arquivo_midia:
+                return "📎 Arquivo"
+            elif obj.url_midia:
+                return "🔗 URL"
+            else:
+                return "⚠️ Sem mídia"
+        return "—"
+    get_midia_status.short_description = 'Mídia'
+    get_midia_status.admin_order_field = 'enviar_com_midia'
+    
+    def get_midia_preview(self, obj):
+        """Exibe preview da mídia no formulário"""
+        if obj.enviar_com_midia:
+            from django.utils.html import format_html
+            if obj.arquivo_midia:
+                url = obj.arquivo_midia.url
+                # Verifica se é uma imagem
+                if obj.arquivo_midia.name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    return format_html(
+                        '<div><strong>Arquivo:</strong> {}<br><img src="{}" style="max-width: 300px; max-height: 300px; margin-top: 10px;"></div>',
+                        obj.arquivo_midia.name,
+                        url
+                    )
+                else:
+                    return format_html(
+                        '<div><strong>Arquivo:</strong> {}<br><a href="{}" target="_blank">Visualizar arquivo</a></div>',
+                        obj.arquivo_midia.name,
+                        url
+                    )
+            elif obj.url_midia:
+                return format_html(
+                    '<div><strong>URL:</strong> <a href="{}" target="_blank">{}</a></div>',
+                    obj.url_midia,
+                    obj.url_midia
+                )
+        return "Nenhuma mídia configurada"
+    get_midia_preview.short_description = 'Preview da Mídia'
     
     def get_progresso(self, obj):
         """Exibe o progresso do envio com percentual"""
@@ -601,13 +643,17 @@ class EnvioHSMMatrixAdmin(admin.ModelAdmin):
         ('Configurações', {
             'fields': ('hsm_template', 'hsm_template_contingencia', 'matrix_api_config', 'consulta_execucao')
         }),
+        ('📎 Enviar com Mídia (Imagem/PDF)', {
+            'fields': ('enviar_com_midia', 'arquivo_midia', 'url_midia', 'get_midia_preview'),
+            'description': '✅ Marque "Enviar com Mídia" e escolha: faça UPLOAD de um arquivo OU cole uma URL externa. A mídia será enviada junto com o HSM.'
+        }),
+        ('Status e Progresso', {
+            'fields': ('status_envio', 'get_progresso', 'get_duracao')
+        }),
         ('Configurações do Segundo HSM', {
             'fields': ('habilitar_segundo_hsm', 'hsm_template_segundo', 'configuracao_variaveis_segundo', 'intervalo_segundo_hsm'),
             'classes': ('collapse',),
             'description': 'Configurações para envio duplo de HSM'
-        }),
-        ('Status e Progresso', {
-            'fields': ('status_envio', 'get_progresso', 'get_duracao')
         }),
         ('Estatísticas', {
             'fields': ('total_clientes', 'total_enviados', 'total_erros', 'total_pendentes')
@@ -636,6 +682,41 @@ class EnvioHSMMatrixAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    class Media:
+        js = ('admin/js/envio_hsm_midia.js',)
+        css = {
+            'all': ('admin/css/envio_hsm_midia.css',)
+        }
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Customiza o formulário para melhorar UX"""
+        form = super().get_form(request, obj, **kwargs)
+        
+        # Adiciona help_text mais detalhado para o campo enviar_com_midia
+        if 'enviar_com_midia' in form.base_fields:
+            form.base_fields['enviar_com_midia'].help_text = (
+                '✅ Marque esta opção para enviar uma mídia (imagem, PDF, documento) junto com o HSM. '
+                'Após marcar, escolha fazer upload de um arquivo OU informar uma URL externa.'
+            )
+        
+        # Adiciona classe CSS customizada aos campos de mídia
+        if 'arquivo_midia' in form.base_fields:
+            form.base_fields['arquivo_midia'].widget.attrs['class'] = 'campo-midia-upload'
+            form.base_fields['arquivo_midia'].help_text = (
+                '📁 Faça upload de um arquivo (imagem JPG/PNG, PDF, etc.). '
+                'O arquivo será armazenado no servidor e uma URL será gerada automaticamente.'
+            )
+        
+        if 'url_midia' in form.base_fields:
+            form.base_fields['url_midia'].widget.attrs['class'] = 'campo-midia-url'
+            form.base_fields['url_midia'].widget.attrs['placeholder'] = 'https://exemplo.com/arquivo.jpg'
+            form.base_fields['url_midia'].help_text = (
+                '🔗 OU cole a URL completa de um arquivo já hospedado em outro servidor. '
+                'Exemplo: https://seusite.com/imagens/promocao.jpg'
+            )
+        
+        return form
 
 @admin.register(EnvioHSMIndividual)
 class EnvioHSMIndividualAdmin(admin.ModelAdmin):
@@ -723,3 +804,8 @@ class EnvioHSMIndividualAdmin(admin.ModelAdmin):
     
     def has_change_permission(self, request, obj=None):
         return False
+
+# Importar e registrar admin de logs automaticamente
+# Os decoradores @admin.register() no admin_log.py farão o registro
+import campanhas.admin_log  # noqa
+

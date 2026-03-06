@@ -1,0 +1,437 @@
+{% extends 'base_saas.html' %}
+{% load static %}
+
+{% block title %}Dashboard Geral - Sistema de Campanhas{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item">Dashboard</span>
+{% endblock %}
+
+{% block page_title %}Dashboard Geral{% endblock %}
+{% block page_subtitle %}Visão geral de todos os módulos e atividades{% endblock %}
+
+{% block page_actions %}
+<form method="get" style="display: flex; gap: var(--space-sm); align-items: center;">
+    <input type="date" name="data_inicio" value="{{ data_inicio }}" class="form-input" style="width: 150px;">
+    <span style="color: var(--text-secondary);">até</span>
+    <input type="date" name="data_fim" value="{{ data_fim }}" class="form-input" style="width: 150px;">
+    <button type="submit" class="btn btn-primary">
+        <i data-feather="filter"></i>
+        Filtrar
+    </button>
+    {% if data_inicio or data_fim %}
+    <a href="{% url 'dashboard_geral' %}" class="btn btn-outline">
+        <i data-feather="x"></i>
+        Limpar
+    </a>
+    {% endif %}
+</form>
+<button class="btn btn-outline" onclick="window.location.reload()">
+    <i data-feather="refresh-cw"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Período Selecionado -->
+{% if periodo_selecionado %}
+<div style="background: var(--bg-secondary); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
+    <i data-feather="calendar" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
+    <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">Período:</span>
+    <strong style="color: var(--text-primary);">{{ periodo_selecionado }}</strong>
+</div>
+{% endif %}
+
+<!-- Resumo Executivo -->
+<div class="section">
+    <div class="grid grid-3">
+        <!-- WhatsApp/HSM Stats -->
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp);">
+                    <i data-feather="message-circle"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">{{ stats_whatsapp.total_envios|default:0 }}</div>
+            <div class="stat-card-label">Envios WhatsApp HSM</div>
+            <div style="margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--border-primary); display: flex; justify-content: space-between; font-size: var(--font-size-sm);">
+                <span style="color: var(--color-success-600);">
+                    <i data-feather="check-circle" style="width: 12px; height: 12px;"></i>
+                    {{ stats_whatsapp.enviados|default:0 }} enviados
+                </span>
+                <span style="color: var(--color-danger-600);">
+                    <i data-feather="x-circle" style="width: 12px; height: 12px;"></i>
+                    {{ stats_whatsapp.erros|default:0 }} erros
+                </span>
+            </div>
+            {% if stats_whatsapp.taxa_sucesso %}
+            <div style="margin-top: var(--space-xs); font-size: var(--font-size-xs); color: var(--text-secondary); text-align: center;">
+                Taxa de sucesso: <strong style="color: var(--color-success-600);">{{ stats_whatsapp.taxa_sucesso }}%</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Emails Stats -->
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background-color: rgba(234, 67, 53, 0.1); color: var(--color-email);">
+                    <i data-feather="mail"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">{{ stats_emails.total_envios|default:0 }}</div>
+            <div class="stat-card-label">Envios de Email</div>
+            <div style="margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--border-primary); display: flex; justify-content: space-between; font-size: var(--font-size-sm);">
+                <span style="color: var(--color-success-600);">
+                    <i data-feather="check-circle" style="width: 12px; height: 12px;"></i>
+                    {{ stats_emails.enviados|default:0 }} enviados
+                </span>
+                <span style="color: var(--color-danger-600);">
+                    <i data-feather="x-circle" style="width: 12px; height: 12px;"></i>
+                    {{ stats_emails.erros|default:0 }} erros
+                </span>
+            </div>
+            {% if stats_emails.taxa_sucesso %}
+            <div style="margin-top: var(--space-xs); font-size: var(--font-size-xs); color: var(--text-secondary); text-align: center;">
+                Taxa de sucesso: <strong style="color: var(--color-success-600);">{{ stats_emails.taxa_sucesso }}%</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Native Stats -->
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background-color: rgba(0, 136, 204, 0.1); color: var(--color-native);">
+                    <i data-feather="phone"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">{{ stats_native.total_ligacoes|default:0 }}</div>
+            <div class="stat-card-label">Ligações Geradas (Native)</div>
+            <div style="margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--border-primary); display: flex; justify-content: space-between; font-size: var(--font-size-sm);">
+                <span style="color: var(--color-success-600);">
+                    <i data-feather="check-circle" style="width: 12px; height: 12px;"></i>
+                    {{ stats_native.execucoes_concluidas|default:0 }} concluídas
+                </span>
+                <span style="color: var(--color-danger-600);">
+                    <i data-feather="x-circle" style="width: 12px; height: 12px;"></i>
+                    {{ stats_native.execucoes_falhas|default:0 }} falhas
+                </span>
+            </div>
+            <div style="margin-top: var(--space-xs); font-size: var(--font-size-xs); color: var(--text-secondary); text-align: center;">
+                Total de execuções: <strong>{{ stats_native.total_execucoes|default:0 }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos de Distribuição -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Distribuição de Envios</h2>
+    <div class="grid grid-3">
+        <!-- Gráfico HSM -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-feather="message-circle" style="width: 18px; height: 18px; color: var(--color-whatsapp);"></i>
+                    <span style="font-weight: var(--font-weight-semibold);">WhatsApp HSM</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartHSM" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico Email -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-feather="mail" style="width: 18px; height: 18px; color: var(--color-email);"></i>
+                    <span style="font-weight: var(--font-weight-semibold);">Emails</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartEmail" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico Native -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-feather="phone" style="width: 18px; height: 18px; color: var(--color-native);"></i>
+                    <span style="font-weight: var(--font-weight-semibold);">Ligações Native</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartNative" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Ações Rápidas</h2>
+    <div class="grid grid-3">
+        <a href="{% url 'campanhas:pagina_processar_consulta' %}" class="card" style="text-decoration: none; border: 2px solid transparent; transition: all 0.2s;">
+            <div class="card-body" style="display: flex; align-items: center; gap: var(--space-md);">
+                <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp); display: flex; align-items: center; justify-content: center;">
+                    <i data-feather="message-circle" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-xs);">Nova Consulta SQL</div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">Criar consulta para WhatsApp</div>
+                </div>
+            </div>
+        </a>
+
+        <a href="{% url 'emails:criar_campanha' %}" class="card" style="text-decoration: none; border: 2px solid transparent; transition: all 0.2s;">
+            <div class="card-body" style="display: flex; align-items: center; gap: var(--space-md);">
+                <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(234, 67, 53, 0.1); color: var(--color-email); display: flex; align-items: center; justify-content: center;">
+                    <i data-feather="mail" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-xs);">Nova Campanha Email</div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">Criar campanha de email</div>
+                </div>
+            </div>
+        </a>
+
+        <a href="{% url 'native:campaign_list' %}" class="card" style="text-decoration: none; border: 2px solid transparent; transition: all 0.2s;">
+            <div class="card-body" style="display: flex; align-items: center; gap: var(--space-md);">
+                <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(0, 136, 204, 0.1); color: var(--color-native); display: flex; align-items: center; justify-content: center;">
+                    <i data-feather="phone" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-xs);">Ver Campanhas Native</div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">Gerenciar ligações</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Atividades Recentes e Módulos -->
+<div class="section">
+    <div class="grid grid-2">
+        <!-- Atividades Recentes -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i data-feather="activity"></i>
+                    Atividades Recentes
+                </h3>
+            </div>
+            <div class="card-body">
+                {% if atividades %}
+                <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                    {% for atividade in atividades %}
+                    <a href="{{ atividade.url }}" style="display: flex; gap: var(--space-md); padding: var(--space-sm); border-radius: var(--radius-md); text-decoration: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-hover)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <div style="width: 40px; height: 40px; border-radius: var(--radius-md); 
+                            {% if atividade.tipo == 'whatsapp' %}
+                                background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp);
+                            {% elif atividade.tipo == 'email' %}
+                                background-color: rgba(234, 67, 53, 0.1); color: var(--color-email);
+                            {% else %}
+                                background-color: rgba(0, 136, 204, 0.1); color: var(--color-native);
+                            {% endif %}
+                            display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-feather="{{ atividade.icone }}" style="width: 20px; height: 20px;"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: var(--font-weight-medium); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ atividade.titulo }}</div>
+                            <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">{{ atividade.data|timesince }} atrás</div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding: var(--space-xl) 0;">
+                    <div class="empty-state-icon" style="font-size: 48px;">📋</div>
+                    <div class="empty-state-title" style="font-size: var(--font-size-base);">Nenhuma atividade ainda</div>
+                    <div class="empty-state-description" style="font-size: var(--font-size-sm);">As atividades recentes aparecerão aqui</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Módulos Disponíveis -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i data-feather="grid"></i>
+                    Módulos do Sistema
+                </h3>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                    <!-- WhatsApp -->
+                    <div style="display: flex; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--border-primary); border-radius: var(--radius-md);">
+                        <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-feather="message-circle" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-xs);">WhatsApp/HSM</div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-sm);">Consultas SQL e envio de mensagens HSM via Matrix</div>
+                            <div style="display: flex; gap: var(--space-sm);">
+                                <a href="{% url 'campanhas:pagina_processar_consulta' %}" class="btn btn-sm btn-outline">Consultas</a>
+                                <a href="{% url 'campanhas:listar_envios_hsm' %}" class="btn btn-sm btn-outline">Envios</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Emails -->
+                    <div style="display: flex; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--border-primary); border-radius: var(--radius-md);">
+                        <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(234, 67, 53, 0.1); color: var(--color-email); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-feather="mail" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-xs);">Emails</div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-sm);">Campanhas de email automatizadas com templates e agendamento</div>
+                            <div style="display: flex; gap: var(--space-sm);">
+                                <a href="{% url 'emails:dashboard' %}" class="btn btn-sm btn-outline">Dashboard</a>
+                                <a href="{% url 'emails:listar_campanhas' %}" class="btn btn-sm btn-outline">Campanhas</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Native -->
+                    <div style="display: flex; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--border-primary); border-radius: var(--radius-md);">
+                        <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(0, 136, 204, 0.1); color: var(--color-native); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-feather="phone" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); margin-bottom: var(--space-xs);">Native Ligações</div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-sm);">Campanhas de ligações automatizadas via Native</div>
+                            <div style="display: flex; gap: var(--space-sm);">
+                                <a href="{% url 'native:dashboard' %}" class="btn btn-sm btn-outline">Dashboard</a>
+                                <a href="{% url 'native:campaign_list' %}" class="btn btn-sm btn-outline">Campanhas</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Hover effects para cards clicáveis */
+    a.card:hover {
+        border-color: var(--color-primary-600) !important;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg) !important;
+    }
+</style>
+
+<script>
+    // Inicializar ícones
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        
+        // Configuração comum dos gráficos
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        };
+
+        // Cores padrão
+        const colors = {
+            success: '#10B981',
+            danger: '#EF4444',
+            warning: '#F59E0B',
+            gray: '#6B7280'
+        };
+
+        // Gráfico HSM
+        const ctxHSM = document.getElementById('chartHSM');
+        if (ctxHSM) {
+            new Chart(ctxHSM.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Enviados', 'Erros', 'Pendentes'],
+                    datasets: [{
+                        data: [
+                            {{ stats_whatsapp.enviados|default:0 }},
+                            {{ stats_whatsapp.erros|default:0 }},
+                            {{ stats_whatsapp.pendentes|default:0 }}
+                        ],
+                        backgroundColor: [colors.success, colors.danger, colors.warning],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+
+        // Gráfico Email
+        const ctxEmail = document.getElementById('chartEmail');
+        if (ctxEmail) {
+            new Chart(ctxEmail.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Enviados', 'Erros', 'Pendentes'],
+                    datasets: [{
+                        data: [
+                            {{ stats_emails.enviados|default:0 }},
+                            {{ stats_emails.erros|default:0 }},
+                            {{ stats_emails.pendentes|default:0 }}
+                        ],
+                        backgroundColor: [colors.success, colors.danger, colors.warning],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+
+        // Gráfico Native
+        const ctxNative = document.getElementById('chartNative');
+        if (ctxNative) {
+            new Chart(ctxNative.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Concluídas', 'Falhas'],
+                    datasets: [{
+                        data: [
+                            {{ stats_native.execucoes_concluidas|default:0 }},
+                            {{ stats_native.execucoes_falhas|default:0 }}
+                        ],
+                        backgroundColor: [colors.success, colors.danger],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+    });
+
+    // Auto-refresh a cada 30 segundos (opcional)
+    // setInterval(function() {
+    //     window.location.reload();
+    // }, 30000);
+</script>
+{% endblock %}

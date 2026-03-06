@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+
+{% block title %}Campanhas de Email{% endblock %}
+
+{% block page_title %}📧 Campanhas de Email{% endblock %}
+{% block page_subtitle %}Gerencie suas campanhas de envio de emails{% endblock %}
+
+{% block navbar_actions %}
+<a href="{% url 'emails:criar_campanha' %}" class="action-button success">
+    <i data-feather="plus" style="width: 14px; height: 14px;"></i>
+    Nova Campanha
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros e Estatísticas -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="filter" style="width: 18px; height: 18px;"></i>
+            Filtros e Estatísticas
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <!-- Estatísticas -->
+        <div class="grid-modern grid-4" style="margin-bottom: var(--space-lg);">
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ stats.total_campanhas }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Total</div>
+            </div>
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--accent-success);">
+                    {{ stats.ativas }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Ativas</div>
+            </div>
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--accent-primary);">
+                    {{ stats.executando }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Executando</div>
+            </div>
+            <div style="text-align: center; padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--accent-warning);">
+                    {{ stats.agendadas }}
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary);">Agendadas</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <form method="get" style="display: flex; gap: var(--space-md); align-items: end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Buscar:
+                </label>
+                <input type="text" name="search" value="{{ search }}" placeholder="Nome da campanha..." 
+                       style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+            </div>
+            <div style="min-width: 150px;">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Status:
+                </label>
+                <select name="status" style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-modern btn-modern-primary">
+                <i data-feather="search" style="width: 14px; height: 14px;"></i>
+                Filtrar
+            </button>
+            {% if search or status_filter %}
+            <a href="{% url 'emails:listar_campanhas' %}" class="btn-modern btn-modern-outline">
+                <i data-feather="x" style="width: 14px; height: 14px;"></i>
+                Limpar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Campanhas -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="list" style="width: 18px; height: 18px;"></i>
+            Campanhas ({{ page_obj.paginator.count }})
+        </div>
+    </div>
+    <div class="modern-card-body">
+        {% if page_obj %}
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                {% for campanha in page_obj %}
+                <div style="padding: var(--space-lg); border: 1px solid var(--border-secondary); border-radius: var(--radius-lg); background: var(--bg-secondary); transition: all var(--transition-normal);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-md);">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 var(--space-xs) 0; color: var(--text-primary);">
+                                <a href="{% url 'emails:detalhe_campanha' campanha.id %}" style="color: inherit; text-decoration: none;">
+                                    {{ campanha.nome }}
+                                </a>
+                            </h3>
+                            {% if campanha.descricao %}
+                            <p style="margin: 0 0 var(--space-sm) 0; color: var(--text-secondary); font-size: var(--font-size-sm);">
+                                {{ campanha.descricao|truncatechars:100 }}
+                            </p>
+                            {% endif %}
+                            
+                            <div style="display: flex; gap: var(--space-lg); font-size: var(--font-size-sm); color: var(--text-tertiary);">
+                                <span>Template: {{ campanha.template_email.nome }}</span>
+                                <span>Servidor: {{ campanha.configuracao_servidor.nome }}</span>
+                                <span>Criado: {{ campanha.data_criacao|date:"d/m/Y H:i" }}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: var(--space-md);">
+                            <span class="status-badge-modern status-{{ campanha.status }}-modern">
+                                {{ campanha.get_status_display }}
+                            </span>
+                            
+                            {% if campanha.total_destinatarios > 0 %}
+                            <div style="text-align: center; min-width: 80px;">
+                                <div style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-primary);">
+                                    {{ campanha.get_progresso_percentual }}%
+                                </div>
+                                <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                                    {{ campanha.total_enviados }}/{{ campanha.total_destinatarios }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Barra de Progresso -->
+                    {% if campanha.total_destinatarios > 0 %}
+                    <div style="margin-bottom: var(--space-md);">
+                        <div style="width: 100%; height: 8px; background: var(--bg-primary); border-radius: var(--radius-sm); overflow: hidden;">
+                            <div style="width: {{ campanha.get_progresso_percentual }}%; height: 100%; background: {% if campanha.status == 'concluida' %}var(--accent-success){% elif campanha.status == 'executando' %}var(--accent-primary){% elif campanha.status == 'erro' %}var(--accent-danger){% else %}var(--accent-warning){% endif %}; transition: width var(--transition-normal);"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Estatísticas -->
+                    {% if campanha.total_enviados > 0 %}
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md); font-size: var(--font-size-sm);">
+                        <div style="text-align: center;">
+                            <div style="font-weight: var(--font-weight-medium); color: var(--text-primary);">{{ campanha.total_enviados }}</div>
+                            <div style="color: var(--text-tertiary);">Enviados</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: var(--font-weight-medium); color: var(--accent-success);">{{ campanha.total_sucessos }}</div>
+                            <div style="color: var(--text-tertiary);">Sucessos</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: var(--font-weight-medium); color: var(--accent-danger);">{{ campanha.total_erros }}</div>
+                            <div style="color: var(--text-tertiary);">Erros</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: var(--font-weight-medium); color: var(--accent-warning);">{{ campanha.total_pendentes }}</div>
+                            <div style="color: var(--text-tertiary);">Pendentes</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: var(--font-weight-medium); color: var(--accent-info);">{{ campanha.get_taxa_sucesso|floatformat:1 }}%</div>
+                            <div style="color: var(--text-tertiary);">Taxa</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Ações -->
+                    <div style="display: flex; gap: var(--space-sm); justify-content: end;">
+                        <a href="{% url 'emails:detalhe_campanha' campanha.id %}" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-sm);">
+                            <i data-feather="eye" style="width: 12px; height: 12px;"></i>
+                            Detalhes
+                        </a>
+                        
+                        {% if campanha.status == 'rascunho' or campanha.status == 'pausada' %}
+                        <a href="{% url 'emails:configurar_campanha' campanha.id %}" class="btn-modern btn-modern-primary" style="font-size: var(--font-size-sm);">
+                            <i data-feather="settings" style="width: 12px; height: 12px;"></i>
+                            Configurar
+                        </a>
+                        {% endif %}
+                        
+                        {% if campanha.pode_executar %}
+                        <button onclick="executarCampanha({{ campanha.id }})" class="btn-modern btn-modern-success" style="font-size: var(--font-size-sm);">
+                            <i data-feather="play" style="width: 12px; height: 12px;"></i>
+                            Executar
+                        </button>
+                        {% endif %}
+                        
+                        {% if campanha.status == 'executando' %}
+                        <button onclick="pausarCampanha({{ campanha.id }})" class="btn-modern btn-modern-warning" style="font-size: var(--font-size-sm);">
+                            <i data-feather="pause" style="width: 12px; height: 12px;"></i>
+                            Pausar
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Paginação -->
+            {% if page_obj.has_other_pages %}
+            <div style="margin-top: var(--space-xl); text-align: center;">
+                <div style="display: inline-flex; gap: var(--space-sm);">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                       class="btn-modern btn-modern-outline">
+                        <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+                        Anterior
+                    </a>
+                    {% endif %}
+                    
+                    <span style="padding: var(--space-sm) var(--space-md); color: var(--text-secondary);">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                    
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                       class="btn-modern btn-modern-outline">
+                        Próxima
+                        <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div style="text-align: center; padding: var(--space-3xl); color: var(--text-tertiary);">
+                <i data-feather="inbox" style="width: 64px; height: 64px; margin-bottom: var(--space-lg);"></i>
+                <h3 style="margin-bottom: var(--space-md); color: var(--text-secondary);">Nenhuma campanha encontrada</h3>
+                <p style="margin-bottom: var(--space-lg);">
+                    {% if search or status_filter %}
+                        Tente ajustar os filtros ou criar uma nova campanha.
+                    {% else %}
+                        Comece criando sua primeira campanha de email.
+                    {% endif %}
+                </p>
+                <a href="{% url 'emails:criar_campanha' %}" class="btn-modern btn-modern-primary">
+                    <i data-feather="plus" style="width: 16px; height: 16px;"></i>
+                    Criar Primeira Campanha
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function executarCampanha(campanhaId) {
+    if (!confirm('Tem certeza que deseja executar esta campanha?')) {
+        return;
+    }
+    
+    fetch(`/emails/campanhas/${campanhaId}/executar/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.error || 'Erro ao executar campanha');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Erro na comunicação com o servidor');
+    });
+}
+
+function pausarCampanha(campanhaId) {
+    if (!confirm('Tem certeza que deseja pausar esta campanha?')) {
+        return;
+    }
+    
+    fetch(`/emails/campanhas/${campanhaId}/pausar/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('error', data.error || 'Erro ao pausar campanha');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Erro na comunicação com o servidor');
+    });
+}
+
+// Auto-refresh para campanhas em execução
+setInterval(function() {
+    const executandoElements = document.querySelectorAll('.status-executando-modern');
+    if (executandoElements.length > 0) {
+        location.reload();
+    }
+}, 10000); // 10 segundos
+</script>
+{% endblock %}

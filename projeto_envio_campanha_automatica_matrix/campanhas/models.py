@@ -444,6 +444,7 @@ class CredenciaisBancoDados(models.Model):
         ('postgresql', 'PostgreSQL'),
         ('sqlserver', 'SQL Server'),
         ('oracle', 'Oracle'),
+        ('clickhouse', 'ClickHouse'),
     ]
 
     titulo = models.CharField(max_length=100, verbose_name="Título")
@@ -473,6 +474,8 @@ class CredenciaisBancoDados(models.Model):
             return f"mssql://{self.usuario}:{self.senha}@{self.host}:{self.porta}/{self.banco}"
         elif self.tipo_banco == 'oracle':
             return f"oracle://{self.usuario}:{self.senha}@{self.host}:{self.porta}/{self.banco}"
+        elif self.tipo_banco == 'clickhouse':
+            return f"clickhouse://{self.usuario}:{self.senha}@{self.host}:{self.porta}/{self.banco}"
         return None
 
 class CredenciaisHubsoft(models.Model):
@@ -1088,6 +1091,27 @@ class EnvioHSMMatrix(models.Model):
         verbose_name="Ativo"
     )
     
+    # Campos para envio de HSM com mídia
+    enviar_com_midia = models.BooleanField(
+        default=False,
+        verbose_name="Enviar com Mídia",
+        help_text="Marque para enviar HSM com imagem ou arquivo anexado"
+    )
+    
+    arquivo_midia = models.FileField(
+        upload_to='hsm_midias/%Y/%m/%d/',
+        blank=True,
+        null=True,
+        verbose_name="Arquivo de Mídia",
+        help_text="Upload de imagem ou arquivo para envio com HSM (será acessível via URL)"
+    )
+    
+    url_midia = models.URLField(
+        blank=True,
+        verbose_name="URL da Mídia",
+        help_text="URL externa da mídia (alternativa ao upload de arquivo). Usada quando 'Enviar com Mídia' está marcado."
+    )
+    
     class Meta:
         verbose_name = "Envio HSM Matrix"
         verbose_name_plural = "Envios HSM Matrix"
@@ -1133,6 +1157,27 @@ class EnvioHSMMatrix(models.Model):
             return 0
         
         return round((self.total_enviados + self.total_erros) / self.total_clientes * 100, 2)
+    
+    def get_url_midia(self):
+        """
+        Retorna a URL da mídia para uso no envio
+        Prioriza arquivo_midia (se houver) sobre url_midia
+        """
+        if self.enviar_com_midia:
+            if self.arquivo_midia:
+                # Retorna a URL completa do arquivo
+                from django.conf import settings
+                if hasattr(self.arquivo_midia, 'url'):
+                    # Se MEDIA_URL é relativa, precisamos adicionar o domínio
+                    media_url = self.arquivo_midia.url
+                    if media_url.startswith('/'):
+                        # Tenta pegar o domínio do request ou das settings
+                        # Por enquanto retorna apenas a URL relativa
+                        return media_url
+                    return media_url
+            elif self.url_midia:
+                return self.url_midia
+        return None
     
     def pode_iniciar(self):
         """Verifica se o envio pode ser iniciado"""
@@ -1390,7 +1435,7 @@ class EnvioHSMIndividual(models.Model):
     url_file = models.URLField(
         blank=True,
         verbose_name="URL do Arquivo",
-        help_text="Link do boleto PDF"
+        help_text="Link do arquivo/mídia (boleto PDF, imagem, etc.) enviado com o HSM"
     )
     
     # Campo para controle de ativação
@@ -1434,3 +1479,6 @@ class EnvioHSMIndividual(models.Model):
         if resposta_api:
             self.resposta_api = resposta_api
         self.save()
+# Importar modelos de log
+from .models_log import APILog, APILogEstatistica
+

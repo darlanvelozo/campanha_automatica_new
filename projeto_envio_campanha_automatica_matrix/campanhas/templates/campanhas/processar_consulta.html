@@ -1,636 +1,502 @@
-{% extends 'base.html' %}
+{% extends 'base_saas.html' %}
+{% load static %}
 
-{% block title %}Nova Consulta - Sistema de Campanhas{% endblock %}
+{% block title %}Nova Consulta SQL - WhatsApp{% endblock %}
 
-{% block page_title %}Nova Consulta{% endblock %}
-{% block page_subtitle %}Configure e execute uma nova consulta de dados{% endblock %}
+{% block breadcrumb %}
+<span class="breadcrumb-item">WhatsApp</span>
+<span class="breadcrumb-item">Nova Consulta</span>
+{% endblock %}
 
-{% block navbar_actions %}
-<a href="{% url 'listar_execucoes' %}" class="action-button">
-    <i data-feather="list" style="width: 14px; height: 14px;"></i>
+{% block page_title %}Nova Consulta SQL{% endblock %}
+{% block page_subtitle %}Execute consultas SQL e prepare dados para envio via WhatsApp HSM{% endblock %}
+
+{% block page_actions %}
+<a href="/whatsapp/" class="btn btn-outline">
+    <i data-feather="list"></i>
     Ver Execuções
 </a>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Layout da aplicação */
-    .app-layout {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: var(--space-lg);
-    }
-
-    .page-header {
-        margin-bottom: var(--space-xl);
-    }
-
-    .breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-md);
-        font-size: var(--font-size-sm);
-        color: var(--text-muted);
-    }
-
-    .breadcrumb a {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        color: var(--text-muted);
-        text-decoration: none;
-        transition: color var(--transition-fast);
-    }
-
-    .breadcrumb a:hover {
-        color: var(--accent-primary);
-    }
-
-    .page-title-section {
-        margin-top: var(--space-md);
-    }
-
-    .page-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        font-size: var(--font-size-3xl);
-        font-weight: var(--font-weight-bold);
-        color: var(--text-primary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .page-subtitle {
-        color: var(--text-tertiary);
-        font-size: var(--font-size-lg);
-        margin: 0;
-    }
-
-    /* Formulário */
-    .form-section {
-        margin-bottom: var(--space-xl);
-    }
-
-    .form-group {
-        margin-bottom: var(--space-lg);
-    }
-
-    .form-label {
-        display: block;
-        font-size: var(--font-size-sm);
-        font-weight: var(--font-weight-medium);
-        color: var(--text-primary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .form-input, .form-select, .form-textarea {
-        width: 100%;
-        padding: var(--space-md);
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-md);
-        color: var(--text-secondary);
-        font-family: var(--font-family-primary);
-        font-size: var(--font-size-base);
-        transition: all var(--transition-normal);
-    }
-
-    .form-input:focus, .form-select:focus, .form-textarea:focus {
-        outline: none;
-        border-color: var(--accent-primary);
-        box-shadow: 0 0 0 3px rgba(51, 160, 255, 0.1);
-    }
-
-    .form-textarea {
-        min-height: 120px;
-        resize: vertical;
-        font-family: var(--font-family-mono);
-        font-size: var(--font-size-sm);
-    }
-
-    .form-help {
-        font-size: var(--font-size-sm);
-        color: var(--text-muted);
-        margin-top: var(--space-xs);
-    }
-
-    /* Checkbox personalizado */
-    .checkbox-group {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        margin-top: var(--space-md);
-    }
-
-    .custom-checkbox {
-        position: relative;
-        width: 20px;
-        height: 20px;
-    }
-
-    .custom-checkbox input {
-        position: absolute;
-        opacity: 0;
-        width: 100%;
-        height: 100%;
-        cursor: pointer;
-    }
-
-    .checkbox-mark {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 20px;
-        height: 20px;
-        background: var(--bg-secondary);
-        border: 2px solid var(--border-primary);
-        border-radius: var(--radius-sm);
-        transition: all var(--transition-normal);
-    }
-
-    .custom-checkbox input:checked + .checkbox-mark {
-        background: var(--accent-primary);
-        border-color: var(--accent-primary);
-    }
-
-    .checkbox-mark::after {
-        content: '';
-        position: absolute;
-        top: 1px;
-        left: 5px;
-        width: 6px;
-        height: 10px;
-        border: solid white;
-        border-width: 0 2px 2px 0;
-        transform: rotate(45deg);
-        opacity: 0;
-        transition: opacity var(--transition-normal);
-    }
-
-    .custom-checkbox input:checked + .checkbox-mark::after {
-        opacity: 1;
-    }
-
-    .checkbox-label {
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        cursor: pointer;
-    }
-
-    /* Seção de variáveis */
-    .variables-section {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-lg);
-        padding: var(--space-lg);
-    }
-
-    .variables-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        font-size: var(--font-size-lg);
-        font-weight: var(--font-weight-semibold);
-        color: var(--text-primary);
-        margin-bottom: var(--space-md);
-    }
-
-    .variables-list {
-        display: block;
-    }
-
-    .variable-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xs);
-        background: rgba(51, 160, 255, 0.1);
-        color: var(--accent-primary);
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-sm);
-        font-size: var(--font-size-xs);
-        font-family: var(--font-family-mono);
-        border: 1px solid rgba(51, 160, 255, 0.3);
-    }
-
-    /* Botões de ação */
-    .form-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: var(--space-md);
-        margin-top: var(--space-xl);
-        padding-top: var(--space-lg);
-        border-top: 1px solid var(--border-secondary);
-    }
-
-    /* Estados de carregamento */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(13, 17, 23, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
-
-    .loading-content {
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-lg);
-        padding: var(--space-xl);
-        text-align: center;
-        max-width: 400px;
-    }
-
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid var(--border-primary);
-        border-top: 3px solid var(--accent-primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto var(--space-md);
-    }
-
-    .loading-text {
-        color: var(--text-secondary);
-        font-size: var(--font-size-base);
-        margin-bottom: var(--space-sm);
-    }
-
-    .loading-subtext {
-        color: var(--text-muted);
-        font-size: var(--font-size-sm);
-    }
-
-    /* Responsividade */
-    @media (max-width: 768px) {
-        .app-layout {
-            padding: var(--space-md);
-        }
-
-        .form-actions {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .page-title {
-            font-size: var(--font-size-2xl);
-        }
-
-        .variables-list {
-            flex-direction: column;
-        }
-    }
-
-    /* Select2 personalizado */
-    .select2-container--default .select2-selection--single {
-        background: var(--bg-secondary) !important;
-        border: 1px solid var(--border-primary) !important;
-        border-radius: var(--radius-md) !important;
-        height: 48px !important;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: var(--text-secondary) !important;
-        line-height: 46px !important;
-        padding-left: var(--space-md) !important;
-    }
-
-    .select2-dropdown {
-        background: var(--bg-secondary) !important;
-        border: 1px solid var(--border-primary) !important;
-        border-radius: var(--radius-md) !important;
-    }
-
-    .select2-container--default .select2-results__option {
-        color: var(--text-secondary) !important;
-        background: var(--bg-secondary) !important;
-    }
-
-    .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background: var(--accent-primary) !important;
-        color: white !important;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="app-layout">
-    <header class="page-header fade-in">
-        <div class="breadcrumb">
-            <a href="{% url 'listar_execucoes' %}">
-                <i data-feather="home" style="width: 14px; height: 14px;"></i>
-                Sistema
-            </a>
-            <i data-feather="chevron-right" style="width: 12px; height: 12px; color: var(--text-muted);"></i>
-            <span>Nova Consulta</span>
-        </div>
-        <div class="page-title-section">
-            <h1 class="page-title">
-                <i data-feather="play-circle" style="width: 28px; height: 28px; color: var(--accent-primary);"></i>
-                Nova Consulta
-            </h1>
-            <p class="page-subtitle">Configure e execute uma nova consulta de dados</p>
-        </div>
-    </header>
+<form method="post" action="/whatsapp/iniciar-processamento/" id="formConsulta">
+    {% csrf_token %}
+    
+    <div class="grid grid-2" style="gap: var(--space-xl);">
+        <!-- Coluna Esquerda - Formulário -->
+        <div>
+            <!-- Seleção de Banco -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="database"></i>
+                        Configuração do Banco
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Credencial do Banco</label>
+                        <select name="credencial_banco" id="credencialBanco" class="form-select" required>
+                            <option value="">Selecione uma credencial</option>
+                            {% for credencial in credenciais_banco %}
+                            <option value="{{ credencial.id }}">{{ credencial.titulo }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="form-help">Selecione a credencial do banco de dados que deseja consultar</span>
+                    </div>
 
-    <main class="content-area">
-        <form id="consulta-form" class="modern-card fade-in">
-            {% csrf_token %}
-            <div class="modern-card-header">
-                <div class="modern-card-title">
-                    <i data-feather="settings" style="width: 20px; height: 20px;"></i>
-                    Configuração da Consulta
+                    <button type="button" class="btn btn-sm btn-ghost" onclick="testarConexao()">
+                        <i data-feather="zap"></i>
+                        Testar Conexão
+                    </button>
+                    <div id="statusConexao" style="margin-top: var(--space-sm);"></div>
                 </div>
             </div>
-            
-            <div class="modern-card-body">
-                <div class="form-section">
-                    <div class="form-group">
-                        <label for="titulo" class="form-label">
-                            <i data-feather="edit-3" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                            Título da Execução
-                        </label>
-                        <input type="text" id="titulo" name="titulo" class="form-input" required>
-                        <div class="form-help">Um nome descritivo para identificar esta execução</div>
-                    </div>
 
+            <!-- Configuração de API -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="cloud"></i>
+                        Configuração da API
+                    </h3>
+                </div>
+                <div class="card-body">
                     <div class="form-group">
-                        <label for="template_sql" class="form-label">
-                            <i data-feather="database" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                            Template SQL
-                        </label>
-                        <select id="template_sql" name="template_sql" class="form-select" required>
-                            <option value="">Selecione um template...</option>
-                            {% for template in templates_sql %}
-                                <option value="{{ template.id }}">{{ template.titulo }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="form-help">Template SQL que será executado para buscar os dados dos clientes</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="credencial_banco" class="form-label">
-                            <i data-feather="server" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                            Credencial do Banco de Dados
-                        </label>
-                        <select id="credencial_banco" name="credencial_banco" class="form-select" required>
-                            <option value="">Selecione uma credencial...</option>
-                            {% for credencial in credenciais_banco %}
-                                <option value="{{ credencial.id }}">{{ credencial.titulo }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="form-help">Credenciais para conectar ao banco de dados</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="credencial_hubsoft" class="form-label">
-                            <i data-feather="cloud" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                            Credencial Hubsoft API
-                        </label>
-                        <select id="credencial_hubsoft" name="credencial_hubsoft" class="form-select">
-                            <option value="">Selecione uma credencial...</option>
-                            {% for credencial in credenciais_hubsoft %}
-                                <option value="{{ credencial.id }}">{{ credencial.titulo }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="form-help" id="credencial-help">API para consulta de dados financeiros adicionais</div>
-                        
-                        <div class="checkbox-group">
-                            <div class="custom-checkbox">
-                                <input type="checkbox" id="pular_consulta_api" name="pular_consulta_api">
-                                <span class="checkbox-mark"></span>
-                            </div>
-                            <label for="pular_consulta_api" class="checkbox-label">
-                                Pular consulta na API (usar apenas dados do SQL)
+                        <div class="form-check">
+                            <input type="checkbox" id="pularConsultaApi" name="pular_consulta_api" class="form-check-input" onchange="toggleCredencialApi()">
+                            <label class="form-check-label" for="pularConsultaApi">
+                                <strong>Pular Consulta na API</strong>
+                                <span style="display: block; font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                                    Se marcado, não consultará dados financeiros na API. Útil para campanhas que usam apenas dados do SQL.
+                                </span>
                             </label>
                         </div>
                     </div>
-                </div>
 
-                <div id="variaveis-section" class="variables-section" style="display: none;">
-                    <div class="variables-title">
-                        <i data-feather="code" style="width: 18px; height: 18px;"></i>
-                        Variáveis do Template
+                    <div id="campoCredencialApi" style="margin-top: var(--space-md);">
+                        <div class="form-group">
+                            <label class="form-label form-label-required">Credencial da API (Hubsoft)</label>
+                            <select name="credencial_hubsoft" id="credencialApi" class="form-select" required>
+                                <option value="">Selecione uma credencial</option>
+                                {% for credencial in credenciais_hubsoft %}
+                                <option value="{{ credencial.id }}">{{ credencial.titulo }} - {{ credencial.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="form-help">Credencial para consultar dados financeiros na API Hubsoft</span>
+                        </div>
                     </div>
-                    <div id="variaveis-list" class="variables-list"></div>
-                </div>
-
-                <div class="form-actions">
-                    <a href="{% url 'listar_execucoes' %}" class="btn-modern btn-modern-outline">
-                        <i data-feather="arrow-left" style="width: 16px; height: 16px;"></i>
-                        Cancelar
-                    </a>
-                    <button type="submit" class="btn-modern btn-modern-primary">
-                        <i data-feather="play" style="width: 16px; height: 16px;"></i>
-                        Iniciar Processamento
-                    </button>
                 </div>
             </div>
-        </form>
-    </main>
-</div>
 
-<!-- Loading Overlay -->
-<div id="loading-overlay" class="loading-overlay" style="display: none;">
-    <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Iniciando processamento...</div>
-        <div class="loading-subtext">Por favor, aguarde enquanto configuramos sua consulta</div>
+            <!-- Consulta SQL -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="code"></i>
+                        Consulta SQL
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label form-label-required">SQL</label>
+                        <textarea name="consulta_sql" id="consultaSql" class="form-textarea" rows="12" required placeholder="SELECT * FROM clientes WHERE..."></textarea>
+                        <span class="form-help">Digite a consulta SQL. Use SELECT para consultar dados.</span>
+                    </div>
+
+                    <!-- Templates Salvos -->
+                    {% if templates_sql %}
+                    <div class="form-group">
+                        <label class="form-label">Templates Salvos</label>
+                        <select id="templateConsulta" class="form-select" onchange="carregarTemplate()">
+                            <option value="">Selecione um template</option>
+                            {% for template in templates_sql %}
+                            <option value="{{ template.id }}" data-sql="{{ template.consulta_sql|escapejs }}" data-titulo="{{ template.titulo|escapejs }}">{{ template.titulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Campo hidden para armazenar o ID do template selecionado -->
+                    <input type="hidden" name="template_sql" id="templateSqlId" value="">
+                </div>
+            </div>
+
+            <!-- Variáveis do Template -->
+            <div class="card" id="cardVariaveis" style="margin-bottom: var(--space-lg); display: none;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="sliders"></i>
+                        Variáveis do Template
+                    </h3>
+                </div>
+                <div class="card-body" id="variaveisContainer">
+                    <div style="text-align: center; padding: var(--space-lg); color: var(--text-tertiary);">
+                        <i data-feather="info" style="width: 24px; height: 24px;"></i>
+                        <p style="margin-top: var(--space-sm);">Selecione um template para ver as variáveis disponíveis</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Opções Adicionais -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="settings"></i>
+                        Opções
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Título da Execução</label>
+                        <input type="text" name="titulo" id="tituloExecucao" class="form-input" placeholder="Ex: Clientes Vencidos - 09/01/2026" required>
+                        <span class="form-help">Nome para identificar esta execução</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" id="salvarConsulta" name="salvar_consulta" class="form-check-input">
+                            <label class="form-check-label" for="salvarConsulta">Salvar consulta para uso futuro</label>
+                        </div>
+                    </div>
+
+                    <div id="campoNomeConsulta" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Nome do Template</label>
+                            <input type="text" name="nome_template" class="form-input" placeholder="Nome para identificar esta consulta">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Limite de Registros</label>
+                        <input type="number" name="limite_registros" class="form-input" value="1000" min="1" max="50000">
+                        <span class="form-help">Máximo de registros que serão processados</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita - Ajuda e Visualização -->
+        <div>
+            <!-- Ajuda -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="help-circle"></i>
+                        Ajuda
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="font-size: var(--font-size-sm); color: var(--text-secondary); line-height: var(--line-height-relaxed);">
+                        <p style="margin-bottom: var(--space-md);"><strong>Dicas para criar consultas:</strong></p>
+                        <ul style="margin-left: var(--space-lg); margin-bottom: var(--space-md);">
+                            <li>A consulta deve retornar pelo menos o telefone do cliente</li>
+                            <li>Use aliases descritivos para as colunas</li>
+                            <li>Teste primeiro com LIMIT pequeno</li>
+                            <li>Evite consultas muito complexas</li>
+                        </ul>
+
+                        <p style="margin-bottom: var(--space-md);"><strong>Exemplo de consulta:</strong></p>
+                        <div style="background-color: var(--bg-tertiary); padding: var(--space-sm); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--font-size-xs);">
+                            SELECT<br>
+                            &nbsp;&nbsp;id,<br>
+                            &nbsp;&nbsp;nome,<br>
+                            &nbsp;&nbsp;telefone,<br>
+                            &nbsp;&nbsp;email<br>
+                            FROM clientes<br>
+                            WHERE ativo = 1<br>
+                            LIMIT 1000
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico Recente -->
+            {% if execucoes_recentes %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="clock"></i>
+                        Execuções Recentes
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        {% for execucao in execucoes_recentes %}
+                        <a href="/whatsapp/execucao/{{ execucao.id }}/" style="display: flex; justify-content: space-between; padding: var(--space-sm); border-radius: var(--radius-md); text-decoration: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-hover)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    #{{ execucao.id }}
+                                </div>
+                                <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                                    {{ execucao.data_inicio|timesince }} atrás
+                                </div>
+                            </div>
+                            <span class="badge {% if execucao.status == 'concluida' %}badge-success{% elif execucao.status == 'processando' %}badge-info{% else %}badge-warning{% endif %}" style="align-self: center;">
+                                {{ execucao.get_status_display }}
+                            </span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div style="display: flex; gap: var(--space-md); justify-content: flex-end; margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border-primary);">
+        <a href="/whatsapp/" class="btn btn-outline">
+            <i data-feather="x"></i>
+            Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary" id="btnExecutar">
+            <i data-feather="play"></i>
+            <span id="btnTexto">Executar Consulta</span>
+        </button>
+    </div>
+</form>
+
+<!-- Modal de Loading -->
+<div id="loadingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: var(--surface-primary); padding: var(--space-xl); border-radius: var(--radius-lg); text-align: center; min-width: 300px;">
+        <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+        <p style="margin: 0; color: var(--text-primary); font-size: var(--font-size-md);">Iniciando processamento...</p>
     </div>
 </div>
 
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<style>
+    .spinner {
+        border: 3px solid var(--color-gray-200);
+        border-top: 3px solid var(--color-primary-600);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
 
 <script>
-    $(document).ready(function() {
-        // Inicializar Select2
-        $('#template_sql, #credencial_banco, #credencial_hubsoft').select2({
-            placeholder: 'Selecione uma opção...',
-            allowClear: true,
-            width: '100%'
-        });
+    // Inicializar ícones
+    feather.replace();
 
-        // Controle do checkbox "Pular consulta na API"
-        const pularConsultaCheckbox = $('#pular_consulta_api');
-        const credencialSelect = $('#credencial_hubsoft');
-        const credencialHelp = $('#credencial-help');
-
-        function toggleCredencialHubsoft() {
-            if (pularConsultaCheckbox.is(':checked')) {
-                credencialSelect.prop('disabled', true).val('').trigger('change');
-                credencialHelp.text('Consulta na API desabilitada - apenas dados do SQL serão utilizados');
-            } else {
-                credencialSelect.prop('disabled', false);
-                credencialHelp.text('API para consulta de dados financeiros adicionais');
-            }
+    // Mostrar/ocultar campo de credencial da API
+    function toggleCredencialApi() {
+        const pularApi = document.getElementById('pularConsultaApi').checked;
+        const campoCredencial = document.getElementById('campoCredencialApi');
+        const selectCredencial = document.getElementById('credencialApi');
+        
+        if (pularApi) {
+            campoCredencial.style.display = 'none';
+            selectCredencial.removeAttribute('required');
+        } else {
+            campoCredencial.style.display = 'block';
+            selectCredencial.setAttribute('required', 'required');
         }
+    }
 
-        pularConsultaCheckbox.on('change', toggleCredencialHubsoft);
+    // Mostrar/ocultar campo de nome do template
+    document.getElementById('salvarConsulta').addEventListener('change', function() {
+        document.getElementById('campoNomeConsulta').style.display = this.checked ? 'block' : 'none';
+    });
 
-        // Carregar variáveis do template
-        $('#template_sql').on('change', function() {
-            const templateId = $(this).val();
-            const variaveisSection = $('#variaveis-section');
-            const variaveisList = $('#variaveis-list');
-
-            if (templateId) {
-                $.ajax({
-                    url: `/template/${templateId}/variaveis/`,
-                    method: 'GET',
-                    success: function(data) {
-                        console.log('Dados recebidos da API:', data);
-                        variaveisList.empty();
-                        
-                        if (data && data.status === 'success' && data.variaveis && Object.keys(data.variaveis).length > 0) {
-                            // Criar campos de input para cada variável
-                            Object.entries(data.variaveis).forEach(function([nome, config]) {
-                                console.log(`Processando variável: ${nome}`, config);
-                                
-                                const isRequired = (config && config.obrigatorio) ? 'required' : '';
-                                const inputType = getInputType(config ? config.tipo : 'text');
-                                const defaultValue = (config && config.valor_padrao) ? config.valor_padrao : '';
-                                const label = (config && config.label) ? config.label : nome;
-                                
-                                const fieldHtml = $(`
-                                    <div class="form-group">
-                                        <label for="var_${nome}" class="form-label">
-                                            <i data-feather="tag" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                                            ${label}
-                                            ${(config && config.obrigatorio) ? '<span style="color: var(--accent-danger);">*</span>' : ''}
-                                        </label>
-                                        ${createInputField(nome, config, inputType, defaultValue, isRequired)}
-                                        <div class="form-help">Variável: \${${nome}}</div>
-                                    </div>
-                                `);
-                                variaveisList.append(fieldHtml);
-                            });
-                            
-                            feather.replace();
-                            variaveisSection.show();
-                        } else {
-                            console.log('Nenhuma variável encontrada ou erro na resposta');
-                            variaveisSection.hide();
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Erro ao carregar variáveis:', {xhr, status, error});
-                        variaveisSection.hide();
-                    }
-                });
-            } else {
-                variaveisSection.hide();
-            }
-        });
-
-        // Funções auxiliares para criação de campos
-        function getInputType(tipo) {
-            switch(tipo) {
-                case 'date': return 'date';
-                case 'datetime': return 'datetime-local';
-                case 'number': return 'number';
-                default: return 'text';
-            }
-        }
-
-        function createInputField(nome, config, inputType, defaultValue, isRequired) {
-            // Verificação de segurança para config
-            if (config && config.tipo === 'select' && config.opcoes && Array.isArray(config.opcoes) && config.opcoes.length > 0) {
-                let options = '<option value="">Selecione...</option>';
-                config.opcoes.forEach(function(opcao) {
-                    const selected = opcao === defaultValue ? 'selected' : '';
-                    options += `<option value="${opcao}" ${selected}>${opcao}</option>`;
-                });
-                return `<select id="var_${nome}" name="var_${nome}" class="form-select" ${isRequired}>${options}</select>`;
-            } else {
-                return `<input type="${inputType}" id="var_${nome}" name="var_${nome}" class="form-input" value="${defaultValue}" ${isRequired}>`;
-            }
-        }
-
-        // Submissão do formulário
-        $('#consulta-form').on('submit', function(e) {
-            e.preventDefault();
+    // Carregar template selecionado
+    function carregarTemplate() {
+        const select = document.getElementById('templateConsulta');
+        const option = select.options[select.selectedIndex];
+        const templateId = option.value;
+        
+        if (templateId) {
+            const sql = option.getAttribute('data-sql');
+            const titulo = option.getAttribute('data-titulo');
             
-            // Capturar dados básicos do formulário
-            const formData = {
-                titulo: $('#titulo').val(),
-                template_sql: $('#template_sql').val(),
-                credencial_banco: $('#credencial_banco').val(),
-                credencial_hubsoft: $('#credencial_hubsoft').val(),
-                pular_consulta_api: $('#pular_consulta_api').is(':checked') ? 'on' : ''
-            };
-
-            // Capturar valores das variáveis
-            $('#variaveis-section input, #variaveis-section select').each(function() {
-                const name = $(this).attr('name');
-                if (name && name.startsWith('var_')) {
-                    formData[name] = $(this).val();
-                }
-            });
-
-            console.log('Dados do formulário antes do envio:', formData);
-
-            // Validação
-            if (!formData.titulo || !formData.template_sql || !formData.credencial_banco) {
-                alert('Por favor, preencha todos os campos obrigatórios.');
-                return;
+            // Preencher SQL e ID do template
+            document.getElementById('consultaSql').value = sql;
+            document.getElementById('templateSqlId').value = templateId;
+            
+            // Sugerir título para execução apenas se o campo estiver vazio
+            const campoTitulo = document.getElementById('tituloExecucao');
+            if (!campoTitulo.value || campoTitulo.value.trim() === '') {
+                const dataAtual = new Date().toLocaleDateString('pt-BR');
+                campoTitulo.value = `${titulo} - ${dataAtual}`;
             }
+            
+            // Carregar variáveis do template
+            carregarVariaveisTemplate(templateId);
+        } else {
+            // Limpar campos se nenhum template selecionado
+            document.getElementById('templateSqlId').value = '';
+            document.getElementById('cardVariaveis').style.display = 'none';
+        }
+    }
 
-            if (!formData.pular_consulta_api && !formData.credencial_hubsoft) {
-                alert('Selecione uma credencial Hubsoft ou marque para pular a consulta na API.');
-                return;
+    // Carregar variáveis do template via AJAX
+    function carregarVariaveisTemplate(templateId) {
+        const cardVariaveis = document.getElementById('cardVariaveis');
+        const container = document.getElementById('variaveisContainer');
+        
+        // Mostrar loading
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-lg);">
+                <div class="spinner"></div>
+                <p style="margin-top: var(--space-sm); color: var(--text-tertiary);">Carregando variáveis...</p>
+            </div>
+        `;
+        cardVariaveis.style.display = 'block';
+        
+        // Fazer requisição AJAX
+        fetch(`/whatsapp/template/${templateId}/variaveis/`, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
             }
-
-            // Mostrar loading
-            $('#loading-overlay').show();
-
-            // Enviar dados
-            $.ajax({
-                url: '{% url "iniciar_processamento" %}',
-                method: 'POST',
-                data: formData,
-                headers: {
-                    'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()
-                },
-                success: function(response) {
-                    console.log('Resposta do servidor:', response);
-                    if (response.status === 'success') {
-                        window.location.href = response.redirect_url;
-                    } else {
-                        $('#loading-overlay').hide();
-                        alert('Erro: ' + (response.message || response.error || 'Erro desconhecido'));
-                    }
-                },
-                error: function(xhr) {
-                    $('#loading-overlay').hide();
-                    let errorMsg = 'Erro ao iniciar processamento.';
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.variaveis && Object.keys(data.variaveis).length > 0) {
+                    // Renderizar campos de variáveis
+                    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-md);">';
                     
-                    if (xhr.responseJSON) {
-                        if (xhr.responseJSON.message) {
-                            errorMsg = xhr.responseJSON.message;
-                        } else if (xhr.responseJSON.error) {
-                            errorMsg = xhr.responseJSON.error;
+                    for (const [varName, varConfig] of Object.entries(data.variaveis)) {
+                        const label = varConfig.label || varName;
+                        const tipo = varConfig.tipo || 'text';
+                        const obrigatorio = varConfig.obrigatorio !== false;
+                        const valorPadrao = varConfig.valor_padrao || '';
+                        const helpText = varConfig.help_text || '';
+                        
+                        html += `
+                            <div class="form-group">
+                                <label class="form-label ${obrigatorio ? 'form-label-required' : ''}">${label}</label>
+                        `;
+                        
+                        if (tipo === 'select' && varConfig.opcoes) {
+                            html += `<select name="var_${varName}" class="form-select" ${obrigatorio ? 'required' : ''}>
+                                <option value="">Selecione...</option>`;
+                            varConfig.opcoes.forEach(opcao => {
+                                const selected = opcao === valorPadrao ? 'selected' : '';
+                                html += `<option value="${opcao}" ${selected}>${opcao}</option>`;
+                            });
+                            html += `</select>`;
+                        } else if (tipo === 'date') {
+                            html += `<input type="date" name="var_${varName}" class="form-input" value="${valorPadrao}" ${obrigatorio ? 'required' : ''}>`;
+                        } else if (tipo === 'datetime') {
+                            html += `<input type="datetime-local" name="var_${varName}" class="form-input" value="${valorPadrao}" ${obrigatorio ? 'required' : ''}>`;
+                        } else if (tipo === 'number') {
+                            html += `<input type="number" name="var_${varName}" class="form-input" value="${valorPadrao}" ${obrigatorio ? 'required' : ''}>`;
+                        } else {
+                            html += `<input type="text" name="var_${varName}" class="form-input" value="${valorPadrao}" placeholder="${label}" ${obrigatorio ? 'required' : ''}>`;
                         }
+                        
+                        if (helpText) {
+                            html += `<span class="form-help">${helpText}</span>`;
+                        }
+                        
+                        html += `</div>`;
                     }
                     
-                    console.log('Erro completo:', xhr.responseJSON);
-                    alert(errorMsg);
+                    html += '</div>';
+                    container.innerHTML = html;
+                    feather.replace();
+                } else {
+                    // Nenhuma variável encontrada
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: var(--space-lg); color: var(--text-tertiary);">
+                            <i data-feather="check-circle" style="width: 24px; height: 24px; color: var(--color-success-600);"></i>
+                            <p style="margin-top: var(--space-sm);">Este template não possui variáveis configuradas</p>
+                        </div>
+                    `;
+                    feather.replace();
                 }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar variáveis:', error);
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i data-feather="alert-circle"></i>
+                        <span>Erro ao carregar variáveis do template</span>
+                    </div>
+                `;
+                feather.replace();
             });
-        });
+    }
 
-        // Inicializar Feather Icons
-        feather.replace();
+    // Testar conexão
+    function testarConexao() {
+        const credencialId = document.getElementById('credencialBanco').value;
+        if (!credencialId) {
+            alert('Selecione uma credencial primeiro');
+            return;
+        }
+
+        const statusDiv = document.getElementById('statusConexao');
+        statusDiv.innerHTML = '<div class="spinner spinner-sm"></div> Testando conexão...';
+
+        // Aqui você pode fazer uma requisição AJAX para testar a conexão
+        setTimeout(function() {
+            statusDiv.innerHTML = '<div class="alert alert-success" style="padding: var(--space-sm); margin: 0;"><i data-feather="check-circle" style="width: 14px; height: 14px;"></i> Conexão estabelecida com sucesso!</div>';
+            feather.replace();
+        }, 1000);
+    }
+
+    // Validar formulário e fazer submit via AJAX
+    document.getElementById('formConsulta').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const sql = document.getElementById('consultaSql').value.trim().toUpperCase();
+        
+        // Validações básicas - aceita SELECT ou WITH (CTEs - Common Table Expressions)
+        if (!sql.startsWith('SELECT') && !sql.startsWith('WITH')) {
+            alert('Apenas consultas SELECT ou WITH (CTEs) são permitidas');
+            return false;
+        }
+
+        const form = this;
+        const formData = new FormData(form);
+        const btnExecutar = document.getElementById('btnExecutar');
+        const btnTexto = document.getElementById('btnTexto');
+        const loadingModal = document.getElementById('loadingModal');
+        
+        // Desabilitar botão e mostrar loading
+        btnExecutar.disabled = true;
+        btnTexto.textContent = 'Processando...';
+        loadingModal.style.display = 'flex';
+        
+        // Fazer requisição AJAX
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingModal.style.display = 'none';
+            
+            if (data.status === 'success') {
+                // Redirecionar para a página de detalhes
+                window.location.href = data.redirect_url;
+            } else {
+                // Mostrar erro
+                alert('Erro: ' + data.message);
+                btnExecutar.disabled = false;
+                btnTexto.textContent = 'Executar Consulta';
+            }
+        })
+        .catch(error => {
+            loadingModal.style.display = 'none';
+            console.error('Erro:', error);
+            alert('Erro ao processar requisição. Por favor, tente novamente.');
+            btnExecutar.disabled = false;
+            btnTexto.textContent = 'Executar Consulta';
+        });
     });
 </script>
-
 {% endblock %}

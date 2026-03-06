@@ -253,6 +253,79 @@ class CampaignAPIClient:
         # Constrói a URL
         return f"{base}/{endpoint}"
     
+    def _is_internal_request(self, url: str) -> bool:
+        """
+        Verifica se a requisição é para o mesmo servidor (requisição interna).
+        
+        Args:
+            url: URL completa da requisição
+        
+        Returns:
+            True se for requisição interna, False caso contrário
+        """
+        try:
+            parsed_url = urlparse(url)
+            api_domain = parsed_url.netloc.lower()
+            api_domain_no_port = api_domain.split(':')[0]
+            
+            # Verificar se o domínio da API está em ALLOWED_HOSTS
+            # Isso indica que é uma requisição para o mesmo servidor
+            allowed_hosts = getattr(settings, 'ALLOWED_HOSTS', [])
+            
+            # Se ALLOWED_HOSTS contém '*', todas as requisições são permitidas
+            if '*' in allowed_hosts:
+                return True
+            
+            # Verificar se o domínio está na lista de hosts permitidos
+            for host in allowed_hosts:
+                host_lower = host.lower()
+                host_no_port = host_lower.split(':')[0]
+                if api_domain_no_port == host_no_port or host_lower == '*':
+                    return True
+            
+            # Verificar também se o domínio base da API corresponde ao domínio base do servidor
+            # Comparar apenas o domínio principal (sem subdomínios)
+            try:
+                from django.contrib.sites.models import Site
+                current_site = Site.objects.get_current()
+                current_domain = current_site.domain.lower().split(':')[0]
+                # Comparar domínios principais (últimas 2 partes: exemplo.com.br)
+                api_parts = api_domain_no_port.split('.')
+                current_parts = current_domain.split('.')
+                if len(api_parts) >= 2 and len(current_parts) >= 2:
+                    api_main = '.'.join(api_parts[-2:])
+                    current_main = '.'.join(current_parts[-2:])
+                    if api_main == current_main:
+                        return True
+            except Exception:
+                pass
+            
+            return False
+        except Exception:
+            return False
+    
+    def _get_headers(self, url: str, base_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+        """
+        Retorna os headers para a requisição, incluindo header especial para requisições internas.
+        
+        Args:
+            url: URL completa da requisição
+            base_headers: Headers base (padrão: {'Content-Type': 'application/json'})
+        
+        Returns:
+            Dict com os headers
+        """
+        if base_headers is None:
+            headers = {'Content-Type': 'application/json'}
+        else:
+            headers = base_headers.copy()
+        
+        # Se for requisição interna, adicionar header especial
+        if self._is_internal_request(url):
+            headers['X-Internal-Request'] = 'true'
+        
+        return headers
+    
     def create_execution(self, titulo: str, template_sql_id: int, credencial_banco_id: int,
                         valores_variaveis: Dict[str, str], credencial_hubsoft_id: Optional[int] = None,
                         pular_consulta_api: bool = False, iniciar_processamento: bool = True) -> Dict[str, Any]:
@@ -285,7 +358,7 @@ class CampaignAPIClient:
         if credencial_hubsoft_id is not None:
             payload["credencial_hubsoft_id"] = credencial_hubsoft_id
         
-        headers = {'Content-Type': 'application/json'}
+        headers = self._get_headers(url)
         
         try:
             response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=30)
@@ -333,7 +406,7 @@ class CampaignAPIClient:
         """
         url = self._build_url(f"execucoes/{execucao_id}/status/")
         
-        headers = {'Accept': 'application/json'}
+        headers = self._get_headers(url, {'Accept': 'application/json'})
         
         try:
             response = requests.get(url, headers=headers, timeout=30)
@@ -368,7 +441,7 @@ class CampaignAPIClient:
             Lista de registros de clientes. Retorna lista vazia em caso de erro.
         """
         url = self._build_url(f"execucoes/{execucao_id}/clientes/")
-        headers = {'Accept': 'application/json'}
+        headers = self._get_headers(url, {'Accept': 'application/json'})
         params = {'page_size': page_size}
         
         registros = []

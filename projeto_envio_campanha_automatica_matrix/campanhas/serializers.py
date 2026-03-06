@@ -222,8 +222,10 @@ class ConsultaExecucaoCreateSerializer(serializers.ModelSerializer):
             thread.daemon = True
             thread.start()
         
-        # Adicionar URL de redirect
-        execucao.redirect_url = reverse('detalhe_execucao', args=[execucao.id])
+        # Adicionar URL de redirect (caminho absoluto, sem usar reverse)
+        # Não podemos usar reverse() aqui porque a URL web tem namespace 'campanhas',
+        # mas estamos em um contexto de API (sem namespace)
+        execucao.redirect_url = f'/whatsapp/execucao/{execucao.id}/'
         
         return execucao
 
@@ -503,8 +505,8 @@ class EnvioHSMMatrixCreateSerializer(serializers.ModelSerializer):
     
     def get_redirect_url(self, obj):
         """Retorna URL de redirect para o envio criado"""
-        from django.urls import reverse
-        return reverse('detalhe_envio_hsm', args=[obj.id])
+        # Retorna caminho absoluto sem usar reverse()
+        return f'/whatsapp/envios-hsm/{obj.id}/'
     
     def create(self, validated_data):
         """Criar novo envio HSM"""

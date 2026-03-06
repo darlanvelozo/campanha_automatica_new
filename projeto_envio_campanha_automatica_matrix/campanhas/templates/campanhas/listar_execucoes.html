@@ -1,430 +1,396 @@
-{% extends 'base.html' %}
+{% extends 'base_saas.html' %}
+{% load static %}
 
-{% block title %}Histórico de Execuções - Sistema de Campanhas{% endblock %}
+{% block title %}Execuções WhatsApp - Sistema de Campanhas{% endblock %}
 
-{% block page_title %}Histórico de Execuções{% endblock %}
-{% block page_subtitle %}Visualize e gerencie todas as execuções de consultas realizadas{% endblock %}
+{% block breadcrumb %}
+<span class="breadcrumb-item">WhatsApp</span>
+<span class="breadcrumb-item">Execuções</span>
+{% endblock %}
 
-{% block navbar_actions %}
-<a href="{% url 'listar_envios_hsm' %}" class="action-button">
-    <i data-feather="send" style="width: 14px; height: 14px;"></i>
+{% block page_title %}Execuções de Consultas{% endblock %}
+{% block page_subtitle %}Visualize e gerencie todas as execuções de consultas SQL para WhatsApp{% endblock %}
+
+{% block page_actions %}
+<a href="/whatsapp/envios-hsm/" class="btn btn-outline">
+    <i data-feather="send"></i>
     Envios HSM
+</a>
+<a href="/whatsapp/processar-consulta/" class="btn btn-primary">
+    <i data-feather="plus"></i>
+    Nova Consulta
 </a>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Layout da aplicação */
-    .app-layout {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: var(--space-lg);
-    }
-
-    .page-header {
-        margin-bottom: var(--space-xl);
-    }
-
-    .breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-md);
-        font-size: var(--font-size-sm);
-        color: var(--text-muted);
-    }
-
-    .breadcrumb a {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        color: var(--text-muted);
-        text-decoration: none;
-        transition: color var(--transition-fast);
-    }
-
-    .breadcrumb a:hover {
-        color: var(--accent-primary);
-    }
-
-    .page-title-section {
-        margin-top: var(--space-md);
-    }
-
-    .page-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        font-size: var(--font-size-3xl);
-        font-weight: var(--font-weight-bold);
-        color: var(--text-primary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .page-subtitle {
-        color: var(--text-tertiary);
-        font-size: var(--font-size-lg);
-        margin: 0;
-    }
-
-    /* Grid de execuções */
-    .execution-grid {
-        display: grid;
-        gap: var(--space-md);
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    }
-
-    .execution-card-modern {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-lg);
-        padding: var(--space-lg);
-        text-decoration: none;
-        color: inherit;
-        display: block;
-        transition: all var(--transition-normal);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .execution-card-modern::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-info));
-        transform: scaleX(0);
-        transition: transform var(--transition-normal);
-    }
-
-    .execution-card-modern:hover {
-        border-color: var(--accent-primary);
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-xl);
-    }
-
-    .execution-card-modern:hover::before {
-        transform: scaleX(1);
-    }
-
-    .execution-card-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        margin-bottom: var(--space-md);
-        gap: var(--space-md);
-    }
-
-    .execution-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        font-size: var(--font-size-lg);
-        font-weight: var(--font-weight-semibold);
-        color: var(--text-primary);
-        flex: 1;
-    }
-
-    .execution-card-body {
-        margin-bottom: var(--space-lg);
-    }
-
-    .execution-info-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        color: var(--text-secondary);
-        font-size: var(--font-size-sm);
-        margin-bottom: var(--space-sm);
-    }
-
-    .execution-info-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .execution-card-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-top: var(--space-md);
-        border-top: 1px solid var(--border-secondary);
-    }
-
-    .execution-stats-modern {
-        display: flex;
-        gap: var(--space-md);
-        flex-wrap: wrap;
-    }
-
-    .stat-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: var(--font-size-xs);
-        color: var(--text-tertiary);
-        padding: var(--space-xs) var(--space-sm);
-        background: var(--bg-tertiary);
-        border-radius: var(--radius-sm);
-    }
-
-    .stat-success {
-        color: var(--accent-success);
-        background: rgba(40, 167, 69, 0.1);
-    }
-
-    .stat-error {
-        color: var(--accent-danger);
-        background: rgba(248, 81, 73, 0.1);
-    }
-
-    /* Estado vazio */
-    .empty-state-modern {
-        text-align: center;
-        padding: var(--space-3xl) var(--space-lg);
-        color: var(--text-tertiary);
-    }
-
-    .empty-icon {
-        margin-bottom: var(--space-lg);
-    }
-
-    .empty-state-modern h3 {
-        font-size: var(--font-size-xl);
-        font-weight: var(--font-weight-semibold);
-        color: var(--text-secondary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .empty-state-modern p {
-        font-size: var(--font-size-base);
-        margin-bottom: var(--space-lg);
-    }
-
-    /* Paginação moderna */
-    .pagination-modern {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--space-sm);
-        margin-top: var(--space-xl);
-        padding-top: var(--space-lg);
-        border-top: 1px solid var(--border-secondary);
-    }
-
-    .pagination-numbers {
-        display: flex;
-        gap: var(--space-xs);
-        flex-wrap: wrap;
-        max-width: 100%;
-        justify-content: center;
-    }
-
-    .pagination-ellipsis {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--space-xs) var(--space-sm);
-        font-size: var(--font-size-xs);
-        color: var(--text-tertiary);
-        min-width: 32px;
-    }
-
-    /* Responsividade */
-    @media (max-width: 768px) {
-        .app-layout {
-            padding: var(--space-md);
-        }
-
-        .execution-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .page-title {
-            font-size: var(--font-size-2xl);
-        }
-
-        .pagination-modern {
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-
-        .execution-stats-modern {
-            flex-direction: column;
-            gap: var(--space-sm);
-        }
-
-        .execution-card-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--space-sm);
-        }
-    }
-
-    @media (max-width: 480px) {
-        .execution-card-modern {
-            padding: var(--space-md);
-        }
-
-        .pagination-numbers {
-            flex-wrap: wrap;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="app-layout">
-    <header class="page-header fade-in">
-        <div class="breadcrumb">
-            <a href="{% url 'pagina_processar_consulta' %}">
-                <i data-feather="home" style="width: 14px; height: 14px;"></i>
-                Sistema
-            </a>
-            <i data-feather="chevron-right" style="width: 12px; height: 12px; color: var(--text-muted);"></i>
-            <span>Execuções</span>
-        </div>
-        <div class="page-title-section">
-            <h1 class="page-title">
-                <i data-feather="list" style="width: 28px; height: 28px; color: var(--accent-primary);"></i>
-                Histórico de Execuções
-            </h1>
-            <p class="page-subtitle">Visualize e gerencie todas as execuções de consultas realizadas</p>
-        </div>
-    </header>
+<!-- Indicador de Filtros Ativos -->
+{% if filtro_status or filtro_data_inicio_de or filtro_data_inicio_ate %}
+<div class="alert alert-info" style="margin-bottom: var(--space-lg); display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: var(--space-sm);">
+        <i data-feather="filter" style="width: 18px; height: 18px;"></i>
+        <span>
+            <strong>Filtros ativos:</strong>
+            {% if filtro_status %}Status: {{ filtro_status|capfirst }}{% endif %}
+            {% if filtro_data_inicio_de %} | Data início de: {{ filtro_data_inicio_de|date:"d/m/Y" }}{% endif %}
+            {% if filtro_data_inicio_ate %} | Data início até: {{ filtro_data_inicio_ate|date:"d/m/Y" }}{% endif %}
+        </span>
+        <span class="badge badge-info" style="margin-left: var(--space-xs);">
+            {{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize }}
+        </span>
+    </div>
+    <a href="?page=1" class="btn btn-ghost btn-sm">
+        <i data-feather="x"></i>
+        Limpar filtros
+    </a>
+</div>
+{% endif %}
 
-    <main class="content-area">
-        <div class="modern-card fade-in">
-            <div class="modern-card-header">
-                <div class="modern-card-title">
-                    <i data-feather="activity" style="width: 20px; height: 20px;"></i>
-                    Lista de Execuções
+<!-- Filtros -->
+<div class="card" style="margin-bottom: var(--space-lg);">
+    <div class="card-body">
+        <form method="get" action="" id="formFiltros">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-md); align-items: end;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="status" id="filtroStatus">
+                        <option value="">Todos</option>
+                        <option value="pendente" {% if filtro_status == 'pendente' %}selected{% endif %}>Pendente</option>
+                        <option value="executando" {% if filtro_status == 'executando' %}selected{% endif %}>Executando</option>
+                        <option value="processando" {% if filtro_status == 'processando' %}selected{% endif %}>Processando</option>
+                        <option value="concluida" {% if filtro_status == 'concluida' %}selected{% endif %}>Concluída</option>
+                        <option value="cancelada" {% if filtro_status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                        <option value="erro" {% if filtro_status == 'erro' %}selected{% endif %}>Erro</option>
+                    </select>
                 </div>
-                <a href="{% url 'pagina_processar_consulta' %}" class="btn-modern btn-modern-primary">
-                    <i data-feather="plus" style="width: 16px; height: 16px;"></i>
-                    Nova Consulta
-                </a>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Data Início - De</label>
+                    <input type="date" class="form-input" name="data_inicio_de" id="dataInicioDe" value="{{ filtro_data_inicio_de }}">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Data Início - Até</label>
+                    <input type="date" class="form-input" name="data_inicio_ate" id="dataInicioAte" value="{{ filtro_data_inicio_ate }}">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" class="form-input" id="buscaExecutando" placeholder="Buscar por título..." onkeyup="filtrarExecutandocoesLocal()">
+                </div>
+                
+                <div style="display: flex; gap: var(--space-sm);">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-feather="filter"></i>
+                        Filtrar
+                    </button>
+                    <button type="button" class="btn btn-ghost" onclick="limparFiltros()">
+                        <i data-feather="x"></i>
+                        Limpar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Execuções -->
+{% if page_obj %}
+<div class="grid grid-auto" id="listaExecutando">
+    {% for execucao in page_obj %}
+    <div class="card execucao-card" data-status="{{ execucao.status }}" data-titulo="{{ execucao.titulo|lower }}">
+        <div class="card-header">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); flex: 1; min-width: 0;">
+                <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i data-feather="database" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: var(--space-xs); cursor: help;" title="{{ execucao.titulo|default:'Execução sem título' }}">
+                        {{ execucao.titulo|default:"Execução sem título" }}
+                    </div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); display: flex; align-items: center; gap: var(--space-xs);">
+                        <i data-feather="calendar" style="width: 12px; height: 12px;"></i>
+                        {{ execucao.data_inicio|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+            </div>
+            <span class="badge {% if execucao.status == 'concluida' %}badge-success{% elif execucao.status == 'processando' or execucao.status == 'executando' %}badge-info{% elif execucao.status == 'cancelada' %}badge-gray{% elif execucao.status == 'erro' %}badge-danger{% else %}badge-warning{% endif %}">
+                {{ execucao.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Template SQL -->
+            {% if execucao.template_sql %}
+            <div style="margin-bottom: var(--space-md);">
+                <div style="font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--text-secondary); margin-bottom: var(--space-xs); text-transform: uppercase;">Template SQL</div>
+                <div style="background-color: var(--bg-tertiary); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-primary); border-left: 2px solid var(--color-primary-500);">
+                    {{ execucao.template_sql.titulo }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Estatísticas -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md);">
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Registros SQL</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--text-primary); line-height: 1;">
+                        {{ execucao.total_registros_sql|default:0 }}
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Consultados API</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--color-success-600); line-height: 1;">
+                        {{ execucao.total_consultados_api|default:0 }}
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Erros</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--color-danger-600); line-height: 1;">
+                        {{ execucao.total_erros|default:0 }}
+                    </div>
+                </div>
             </div>
             
-            <div class="modern-card-body">
-                {% if page_obj %}
-                    <div class="execution-grid">
-                        {% for execucao in page_obj %}
-                            <a href="{% url 'detalhe_execucao' execucao.id %}" class="execution-card-modern">
-                                <div class="execution-card-header">
-                                    <div class="execution-title">
-                                        <i data-feather="terminal" style="width: 18px; height: 18px; color: var(--accent-primary);"></i>
-                                        <span>{{ execucao.titulo }}</span>
-                                    </div>
-                                    <span class="status-badge-modern status-{{ execucao.status }}-modern">
-                                        {{ execucao.get_status_display }}
-                                    </span>
-                                </div>
-                                
-                                <div class="execution-card-body">
-                                    <div class="execution-info-item">
-                                        <i data-feather="file-text" style="width: 14px; height: 14px;"></i>
-                                        <span>{{ execucao.template_sql.titulo }}</span>
-                                    </div>
-                                    <div class="execution-info-item">
-                                        <i data-feather="calendar" style="width: 14px; height: 14px;"></i>
-                                        <span>{{ execucao.data_inicio|date:"d/m/Y H:i" }}</span>
-                                    </div>
-                                    {% if execucao.data_fim %}
-                                    <div class="execution-info-item">
-                                        <i data-feather="clock" style="width: 14px; height: 14px;"></i>
-                                        <span>Finalizada às {{ execucao.data_fim|date:"H:i" }}</span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="execution-card-footer">
-                                    <div class="execution-stats-modern">
-                                        <span class="stat-item">
-                                            <i data-feather="users" style="width: 14px; height: 14px;"></i>
-                                            {{ execucao.clientes_processados|default:0 }} clientes
-                                        </span>
-                                        {% if execucao.clientes_com_sucesso %}
-                                        <span class="stat-item stat-success">
-                                            <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
-                                            {{ execucao.clientes_com_sucesso }} sucessos
-                                        </span>
-                                        {% endif %}
-                                        {% if execucao.clientes_com_erro %}
-                                        <span class="stat-item stat-error">
-                                            <i data-feather="x-circle" style="width: 14px; height: 14px;"></i>
-                                            {{ execucao.clientes_com_erro }} erros
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                    <i data-feather="chevron-right" style="width: 16px; height: 16px; color: var(--accent-primary);"></i>
-                                </div>
-                            </a>
-                        {% endfor %}
-                    </div>
+            {% if execucao.status == 'executando' %}
+            <div style="margin-top: var(--space-md);">
+                <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-bottom: var(--space-xs); text-align: center;">
+                    Progresso: <strong>{% if execucao.total_registros_sql > 0 %}{% widthratio execucao.total_consultados_api execucao.total_registros_sql 100 %}{% else %}0{% endif %}%</strong>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar progress-bar-success" style="width: {% if execucao.total_registros_sql > 0 %}{% widthratio execucao.total_consultados_api execucao.total_registros_sql 100 %}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer">
+            <div class="dropdown" style="position: relative;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="toggleDropdown(event, 'dropdown-{{ execucao.id }}')">
+                    <i data-feather="more-horizontal"></i>
+                    Ações
+                </button>
+                <div class="dropdown-menu" id="dropdown-{{ execucao.id }}" style="position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 1000;">
+                    <a href="/whatsapp/execucao/{{ execucao.id }}/" class="dropdown-item">
+                        <i data-feather="eye"></i>
+                        Ver Detalhes
+                    </a>
                     
-                    {% if page_obj.has_other_pages %}
-                    <div class="pagination-modern">
-                        {% if page_obj.has_previous %}
-                            <a href="?page={{ page_obj.previous_page_number }}" class="btn-modern btn-modern-outline">
-                                <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
-                                Anterior
-                            </a>
-                        {% endif %}
-
-                        <div class="pagination-numbers">
-                            {% for num in page_obj.paginator.page_range %}
-                                {# Sempre mostra a primeira e a última página #}
-                                {% if num == 1 or num == page_obj.paginator.num_pages %}
-                                    {% if page_obj.number == num %}
-                                        <span class="btn-modern btn-modern-primary">{{ num }}</span>
-                                    {% else %}
-                                        <a href="?page={{ num }}" class="btn-modern btn-modern-outline">{{ num }}</a>
-                                    {% endif %}
-
-                                {# Mostra um range em volta da página atual (2 para trás e 2 para frente) #}
-                                {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
-                                    {% if page_obj.number == num %}
-                                        <span class="btn-modern btn-modern-primary">{{ num }}</span>
-                                    {% else %}
-                                        <a href="?page={{ num }}" class="btn-modern btn-modern-outline">{{ num }}</a>
-                                    {% endif %}
-
-                                {# Reticências após o início #}
-                                {% elif num == 2 and page_obj.number > 4 %}
-                                    <span class="pagination-ellipsis">...</span>
-
-                                {# Reticências antes do fim #}
-                                {% elif num == page_obj.paginator.num_pages|add:'-1' and page_obj.number < page_obj.paginator.num_pages|add:'-3' %}
-                                    <span class="pagination-ellipsis">...</span>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-
-                        {% if page_obj.has_next %}
-                            <a href="?page={{ page_obj.next_page_number }}" class="btn-modern btn-modern-outline">
-                                Próxima
-                                <i data-feather="arrow-right" style="width: 14px; height: 14px;"></i>
-                            </a>
-                        {% endif %}
-                    </div>
+                    {% if execucao.status == 'concluida' %}
+                    <a href="/whatsapp/execucao/{{ execucao.id }}/configurar-hsm/" class="dropdown-item">
+                        <i data-feather="send"></i>
+                        Enviar HSM
+                    </a>
+                    <a href="/whatsapp/execucao/{{ execucao.id }}/exportar/" class="dropdown-item">
+                        <i data-feather="download"></i>
+                        Exportar CSV
+                    </a>
                     {% endif %}
-                {% else %}
-                    <div class="empty-state-modern">
-                        <div class="empty-icon">
-                            <i data-feather="folder-minus" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
-                        </div>
-                        <h3>Nenhuma execução encontrada</h3>
-                        <p>Ainda não há execuções registradas no sistema.</p>
-                        <a href="{% url 'pagina_processar_consulta' %}" class="btn-modern btn-modern-primary">
-                            <i data-feather="plus" style="width: 16px; height: 16px;"></i>
-                            Criar primeira consulta
-                        </a>
-                    </div>
-                {% endif %}
+                    
+                    {% if execucao.status == 'processando' or execucao.status == 'executando' %}
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item dropdown-item-danger" onclick="cancelarExecucao(event, {{ execucao.id }})">
+                        <i data-feather="x-circle"></i>
+                        Cancelar Execução
+                    </a>
+                    {% endif %}
+                    
+                    {% if execucao.status == 'concluida' or execucao.status == 'cancelada' or execucao.status == 'erro' %}
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item" onclick="reiniciarExecucao(event, {{ execucao.id }})">
+                        <i data-feather="rotate-cw"></i>
+                        Reiniciar Consulta
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </main>
+    </div>
+    {% endfor %}
 </div>
+
+<!-- Paginação -->
+{% if is_paginated %}
+<div class="pagination" style="margin-top: var(--space-xl);">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_data_inicio_de %}&data_inicio_de={{ filtro_data_inicio_de }}{% endif %}{% if filtro_data_inicio_ate %}&data_inicio_ate={{ filtro_data_inicio_ate }}{% endif %}" class="pagination-item">
+        <i data-feather="chevrons-left" style="width: 14px; height: 14px;"></i>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_data_inicio_de %}&data_inicio_de={{ filtro_data_inicio_de }}{% endif %}{% if filtro_data_inicio_ate %}&data_inicio_ate={{ filtro_data_inicio_ate }}{% endif %}" class="pagination-item">
+        <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+    </a>
+    {% else %}
+    <span class="pagination-item" disabled>
+        <i data-feather="chevrons-left" style="width: 14px; height: 14px;"></i>
+    </span>
+    <span class="pagination-item" disabled>
+        <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+    </span>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <span class="pagination-item active">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?page={{ num }}{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_data_inicio_de %}&data_inicio_de={{ filtro_data_inicio_de }}{% endif %}{% if filtro_data_inicio_ate %}&data_inicio_ate={{ filtro_data_inicio_ate }}{% endif %}" class="pagination-item">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_data_inicio_de %}&data_inicio_de={{ filtro_data_inicio_de }}{% endif %}{% if filtro_data_inicio_ate %}&data_inicio_ate={{ filtro_data_inicio_ate }}{% endif %}" class="pagination-item">
+        <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_data_inicio_de %}&data_inicio_de={{ filtro_data_inicio_de }}{% endif %}{% if filtro_data_inicio_ate %}&data_inicio_ate={{ filtro_data_inicio_ate }}{% endif %}" class="pagination-item">
+        <i data-feather="chevrons-right" style="width: 14px; height: 14px;"></i>
+    </a>
+    {% else %}
+    <span class="pagination-item" disabled>
+        <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+    </span>
+    <span class="pagination-item" disabled>
+        <i data-feather="chevrons-right" style="width: 14px; height: 14px;"></i>
+    </span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+    <div class="empty-state-icon">📊</div>
+    <div class="empty-state-title">Nenhuma execução encontrada</div>
+    <div class="empty-state-description">
+        Comece criando uma nova consulta SQL para visualizar os resultados aqui
+    </div>
+    <a href="/whatsapp/processar-consulta/" class="btn btn-primary">
+        <i data-feather="plus"></i>
+        Nova Consulta SQL
+    </a>
+</div>
+{% endif %}
+
+<script>
+    // Inicializar ícones
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        
+        // Fechar dropdowns ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.classList.remove('active');
+                    menu.style.display = 'none';
+                });
+            }
+        });
+    });
+
+    // Filtrar execuções localmente (apenas busca por texto)
+    function filtrarExecutandocoesLocal() {
+        const busca = document.getElementById('buscaExecutando').value.toLowerCase();
+        const cards = document.querySelectorAll('.execucao-card');
+
+        cards.forEach(card => {
+            const cardTitulo = card.dataset.titulo;
+            const buscaMatch = !busca || cardTitulo.includes(busca);
+
+            if (buscaMatch) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // Limpar filtros
+    function limparFiltros() {
+        window.location.href = window.location.pathname;
+    }
+
+    // Toggle dropdown
+    function toggleDropdown(event, dropdownId) {
+        console.log('Toggle dropdown chamado:', dropdownId);
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) {
+            console.error('Dropdown não encontrado:', dropdownId);
+            return;
+        }
+        
+        console.log('Dropdown encontrado:', dropdown);
+        const isActive = dropdown.classList.contains('active');
+        console.log('Estado atual (active):', isActive);
+        
+        // Fechar todos os dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.remove('active');
+            menu.style.display = 'none';
+        });
+        
+        // Abrir o dropdown clicado se não estava aberto
+        if (!isActive) {
+            dropdown.classList.add('active');
+            dropdown.style.display = 'block';
+            console.log('Dropdown aberto');
+            // Re-renderizar ícones após um pequeno delay
+            setTimeout(() => {
+                feather.replace();
+            }, 50);
+        }
+    }
+    
+    // Cancelar execução
+    function cancelarExecucao(event, execucaoId) {
+        event.preventDefault();
+        
+        if (confirm('Deseja realmente cancelar esta execução?\n\nEsta ação não pode ser desfeita.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/whatsapp/execucao/${execucaoId}/cancelar/`;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
+    // Reiniciar execução
+    function reiniciarExecucao(event, execucaoId) {
+        event.preventDefault();
+        
+        if (confirm('Deseja reiniciar esta consulta com os mesmos parâmetros?\n\nIsso criará uma nova execução mantendo:\n• Template SQL\n• Credenciais\n• Variáveis configuradas')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/whatsapp/execucao/${execucaoId}/reiniciar/`;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // Auto-refresh para execuções em andamento (a cada 30 segundos)
+    {% if has_processing %}
+    setInterval(function() {
+        window.location.reload();
+    }, 30000);
+    {% endif %}
+</script>
 {% endblock %}

@@ -1,0 +1,148 @@
+/**
+ * Estilos customizados para o formulário de Envio HSM com Mídia
+ */
+
+/* Destaque da seção de mídia */
+.form-row.field-enviar_com_midia {
+    background-color: #f0f8ff;
+    padding: 15px;
+    border-left: 4px solid #4CAF50;
+    margin-bottom: 20px;
+}
+
+.form-row.field-enviar_com_midia label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+/* Animação de destaque quando campos aparecem */
+.destaque-midia {
+    animation: highlight-pulse 1.5s ease-in-out;
+}
+
+@keyframes highlight-pulse {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: #fffacd;
+    }
+}
+
+/* Estilo para erro de validação */
+.destaque-erro {
+    animation: error-shake 0.5s;
+    border-left: 4px solid #f44336 !important;
+    background-color: #ffebee !important;
+}
+
+@keyframes error-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Feedback visual quando arquivo é selecionado */
+.arquivo-selecionado {
+    border-left: 4px solid #4CAF50;
+    background-color: #e8f5e9;
+    transition: all 0.3s ease;
+}
+
+/* Feedback visual quando URL é informada */
+.url-informada {
+    border-left: 4px solid #2196F3;
+    background-color: #e3f2fd;
+    transition: all 0.3s ease;
+}
+
+/* Feedback visual quando URL é inválida */
+.url-invalida {
+    border-left: 4px solid #ff9800;
+    background-color: #fff3e0;
+}
+
+/* Estilo para a dica de prioridade */
+.midia-priority-info {
+    background-color: #fff9c4;
+    border-left: 4px solid #ffc107;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.midia-priority-info strong {
+    color: #f57f17;
+}
+
+/* Melhora visual dos campos de upload */
+.campo-midia-upload {
+    border: 2px dashed #4CAF50;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f1f8f4;
+    transition: all 0.3s ease;
+}
+
+.campo-midia-upload:hover {
+    border-color: #45a049;
+    background-color: #e8f5e9;
+}
+
+/* Melhora visual do campo de URL */
+.campo-midia-url {
+    font-family: monospace;
+    font-size: 13px;
+    padding: 8px;
+    border: 2px solid #2196F3;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.campo-midia-url:focus {
+    border-color: #1976D2;
+    box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+    outline: none;
+}
+
+/* Estilo para o preview de imagem */
+.form-row.field-get_midia_preview img {
+    border: 3px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.form-row.field-get_midia_preview img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Destaca o fieldset de mídia */
+.module > h2:contains("Enviar com Mídia") {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white !important;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+/* Ícones nos help texts */
+.help {
+    font-size: 12px;
+    color: #666;
+    display: block;
+    margin-top: 5px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .form-row.field-enviar_com_midia {
+        padding: 10px;
+    }
+    
+    .midia-priority-info {
+        font-size: 12px;
+    }
+}

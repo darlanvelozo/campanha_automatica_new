@@ -1,0 +1,391 @@
+{% extends 'base_saas.html' %}
+{% load static %}
+
+{% block title %}Execuções WhatsApp - Sistema de Campanhas{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item">WhatsApp</span>
+<span class="breadcrumb-item">Execuções</span>
+{% endblock %}
+
+{% block page_title %}Execuções de Consultas{% endblock %}
+{% block page_subtitle %}Visualize e gerencie todas as execuções de consultas SQL para WhatsApp{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'campanhas:listar_envios_hsm' %}" class="btn btn-outline">
+    <i data-feather="send"></i>
+    Envios HSM
+</a>
+<a href="{% url 'campanhas:pagina_processar_consulta' %}" class="btn btn-primary">
+    <i data-feather="plus"></i>
+    Nova Consulta
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card" style="margin-bottom: var(--space-lg);">
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Filtrar por status</label>
+                <select class="form-select" id="filtroStatus" onchange="filtrarExecucoes()">
+                    <option value="">Todos</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="processando">Processando</option>
+                    <option value="concluida">Concluída</option>
+                    <option value="cancelada">Cancelada</option>
+                    <option value="erro">Erro</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Buscar</label>
+                <input type="text" class="form-input" id="buscaExecucao" placeholder="Buscar por consulta..." onkeyup="filtrarExecucoes()">
+            </div>
+            <button class="btn btn-ghost" onclick="limparFiltros()">
+                <i data-feather="x"></i>
+                Limpar Filtros
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Execuções -->
+{% if execucoes %}
+<div class="grid grid-auto" id="listaExecucoes">
+    {% for execucao in execucoes %}
+    <div class="card execucao-card" data-status="{{ execucao.status }}" data-consulta="{{ execucao.consulta_sql|lower }}" data-id="{{ execucao.id }}">
+        <div class="card-header">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); flex: 1; min-width: 0;">
+                <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i data-feather="database"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        Execução #{{ execucao.id }}
+                    </div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                        {{ execucao.data_criacao|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+            </div>
+            <span class="badge {% if execucao.status == 'concluida' %}badge-success{% elif execucao.status == 'processando' %}badge-info{% elif execucao.status == 'cancelada' %}badge-gray{% elif execucao.status == 'erro' %}badge-danger{% else %}badge-warning{% endif %}">
+                {{ execucao.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Consulta SQL -->
+            <div style="margin-bottom: var(--space-md);">
+                <div style="font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--text-secondary); margin-bottom: var(--space-xs); text-transform: uppercase;">Consulta SQL</div>
+                <div style="background-color: var(--bg-tertiary); padding: var(--space-sm); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-primary); max-height: 80px; overflow: auto;">
+                    {{ execucao.consulta_sql|truncatewords:20 }}
+                </div>
+            </div>
+
+            <!-- Estatísticas -->
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md);">
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">Total Processados</div>
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--text-primary);">
+                        {{ execucao.total_registros|default:0 }}
+                    </div>
+                </div>
+                {% if execucao.status == 'processando' %}
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">
+                        Progresso: <strong>{{ execucao.progresso|default:0 }}%</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {{ execucao.progresso|default:0 }}%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">Duração</div>
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--text-primary);">
+                        {% if execucao.data_conclusao %}
+                            {{ execucao.duracao_formatada|default:"-" }}
+                        {% else %}
+                            Em andamento
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <div class="dropdown">
+                <button class="btn btn-primary btn-sm dropdown-trigger" onclick="toggleDropdown(event, 'dropdown-{{ execucao.id }}')">
+                    <i data-feather="more-horizontal"></i>
+                    Ações
+                </button>
+                <div class="dropdown-menu" id="dropdown-{{ execucao.id }}">
+                    <a href="{% url 'campanhas:detalhe_execucao' execucao.id %}" class="dropdown-item">
+                        <i data-feather="eye"></i>
+                        Ver Detalhes
+                    </a>
+                    
+                    {% if execucao.status == 'concluida' %}
+                    <a href="{% url 'campanhas:configurar_envio_hsm' execucao.id %}" class="dropdown-item">
+                        <i data-feather="send"></i>
+                        Enviar HSM
+                    </a>
+                    <a href="{% url 'campanhas:exportar_resultados_csv' execucao.id %}" class="dropdown-item">
+                        <i data-feather="download"></i>
+                        Exportar CSV
+                    </a>
+                    {% endif %}
+                    
+                    {% if execucao.status == 'processando' %}
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item dropdown-item-danger" onclick="cancelarExecucao(event, {{ execucao.id }})">
+                        <i data-feather="x-circle"></i>
+                        Cancelar Execução
+                    </a>
+                    {% endif %}
+                    
+                    {% if execucao.status == 'cancelada' or execucao.status == 'erro' %}
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item" onclick="reiniciarExecucao(event, {{ execucao.id }})">
+                        <i data-feather="rotate-cw"></i>
+                        Reiniciar Consulta
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Paginação -->
+{% if is_paginated %}
+<div class="pagination" style="margin-top: var(--space-xl);">
+    {% if page_obj.has_previous %}
+    <a href="?page=1" class="pagination-item">
+        <i data-feather="chevrons-left" style="width: 14px; height: 14px;"></i>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="pagination-item">
+        <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+    </a>
+    {% else %}
+    <span class="pagination-item" disabled>
+        <i data-feather="chevrons-left" style="width: 14px; height: 14px;"></i>
+    </span>
+    <span class="pagination-item" disabled>
+        <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+    </span>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <span class="pagination-item active">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?page={{ num }}" class="pagination-item">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="pagination-item">
+        <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}" class="pagination-item">
+        <i data-feather="chevrons-right" style="width: 14px; height: 14px;"></i>
+    </a>
+    {% else %}
+    <span class="pagination-item" disabled>
+        <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+    </span>
+    <span class="pagination-item" disabled>
+        <i data-feather="chevrons-right" style="width: 14px; height: 14px;"></i>
+    </span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+    <div class="empty-state-icon">📊</div>
+    <div class="empty-state-title">Nenhuma execução encontrada</div>
+    <div class="empty-state-description">
+        Comece criando uma nova consulta SQL para visualizar os resultados aqui
+    </div>
+    <a href="{% url 'campanhas:pagina_processar_consulta' %}" class="btn btn-primary">
+        <i data-feather="plus"></i>
+        Nova Consulta SQL
+    </a>
+</div>
+{% endif %}
+
+<script>
+    // Inicializar ícones
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        
+        // Restaurar filtros do sessionStorage
+        const filtroStatus = sessionStorage.getItem('filtroStatus');
+        const buscaExecucao = sessionStorage.getItem('buscaExecucao');
+        
+        if (filtroStatus) {
+            document.getElementById('filtroStatus').value = filtroStatus;
+        }
+        if (buscaExecucao) {
+            document.getElementById('buscaExecucao').value = buscaExecucao;
+        }
+        
+        // Aplicar filtros restaurados
+        if (filtroStatus || buscaExecucao) {
+            filtrarExecucoes();
+        }
+        
+        // Fechar dropdowns ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+    });
+
+    // Filtrar execuções
+    function filtrarExecucoes() {
+        const status = document.getElementById('filtroStatus').value.toLowerCase();
+        const busca = document.getElementById('buscaExecucao').value.toLowerCase();
+        const cards = document.querySelectorAll('.execucao-card');
+        
+        // Salvar filtros no sessionStorage
+        sessionStorage.setItem('filtroStatus', status);
+        sessionStorage.setItem('buscaExecucao', busca);
+
+        let visibleCount = 0;
+        cards.forEach(card => {
+            const cardStatus = card.dataset.status.toLowerCase();
+            const cardConsulta = card.dataset.consulta;
+            const cardId = card.dataset.id;
+            
+            const statusMatch = !status || cardStatus === status;
+            const buscaMatch = !busca || cardConsulta.includes(busca) || cardId.includes(busca);
+
+            if (statusMatch && buscaMatch) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Mostrar mensagem se nenhum resultado
+        const listaExecucoes = document.getElementById('listaExecucoes');
+        let emptyMessage = document.getElementById('emptyFilterMessage');
+        
+        if (visibleCount === 0 && cards.length > 0) {
+            if (!emptyMessage) {
+                emptyMessage = document.createElement('div');
+                emptyMessage.id = 'emptyFilterMessage';
+                emptyMessage.className = 'empty-state';
+                emptyMessage.innerHTML = `
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">Nenhuma execução encontrada</div>
+                    <div class="empty-state-description">
+                        Tente ajustar os filtros para encontrar o que procura
+                    </div>
+                `;
+                listaExecucoes.parentNode.insertBefore(emptyMessage, listaExecucoes.nextSibling);
+            }
+            emptyMessage.style.display = 'block';
+            listaExecucoes.style.display = 'none';
+        } else {
+            if (emptyMessage) {
+                emptyMessage.style.display = 'none';
+            }
+            listaExecucoes.style.display = '';
+        }
+    }
+
+    // Limpar filtros
+    function limparFiltros() {
+        document.getElementById('filtroStatus').value = '';
+        document.getElementById('buscaExecucao').value = '';
+        sessionStorage.removeItem('filtroStatus');
+        sessionStorage.removeItem('buscaExecucao');
+        filtrarExecucoes();
+    }
+
+    // Toggle dropdown
+    function toggleDropdown(event, dropdownId) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const dropdown = document.getElementById(dropdownId);
+        const isShown = dropdown.classList.contains('show');
+        
+        // Fechar todos os dropdowns
+        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+        });
+        
+        // Abrir o dropdown clicado se não estava aberto
+        if (!isShown) {
+            dropdown.classList.add('show');
+            feather.replace(); // Re-renderizar ícones
+        }
+    }
+    
+    // Cancelar execução
+    function cancelarExecucao(event, execucaoId) {
+        event.preventDefault();
+        
+        if (confirm('Deseja realmente cancelar esta execução?\n\nEsta ação não pode ser desfeita.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/whatsapp/execucao/${execucaoId}/cancelar/`;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
+    // Reiniciar execução
+    function reiniciarExecucao(event, execucaoId) {
+        event.preventDefault();
+        
+        if (confirm('Deseja reiniciar esta consulta com os mesmos parâmetros?\n\nIsso criará uma nova execução mantendo:\n• Consulta SQL\n• Credenciais\n• Variáveis configuradas')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/whatsapp/execucao/${execucaoId}/reiniciar/`;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // Auto-refresh para execuções em andamento (a cada 30 segundos)
+    {% if has_processing %}
+    setInterval(function() {
+        window.location.reload();
+    }, 30000);
+    {% endif %}
+</script>
+{% endblock %}

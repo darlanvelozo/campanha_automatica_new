@@ -1,0 +1,772 @@
+{% extends 'base_saas.html' %}
+{% load static %}
+
+{% block title %}Configurar Envio HSM - {{ execucao.titulo }}{% endblock %}
+
+{% block page_title %}Configurar Envio HSM{% endblock %}
+
+{% block page_subtitle %}
+{{ execucao.titulo }} • {{ total_clientes }} cliente{{ total_clientes|pluralize }}
+{% endblock %}
+
+{% block page_actions %}
+<a href="/whatsapp/execucao/{{ execucao.id }}/" class="btn btn-outline">
+    <i data-feather="arrow-left"></i>
+    Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="hsmForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <!-- Card de Resumo -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="info"></i>
+                Resumo da Execução
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-3" style="gap: var(--space-lg);">
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Total de Clientes</div>
+                    <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary-600);">
+                        {{ total_clientes }}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Template SQL</div>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        {{ execucao.template_sql.titulo }}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Data de Execução</div>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        {{ execucao.data_inicio|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuração da API Matrix -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="settings"></i>
+                Configuração da API Matrix
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="matrix_api">API Matrix <span style="color: var(--color-danger-600);">*</span></label>
+                <select name="matrix_api" id="matrix_api" class="form-control" required>
+                    <option value="">Selecione uma API...</option>
+                    {% for api in apis_matrix %}
+                    <option value="{{ api.id }}">{{ api.nome }}</option>
+                    {% endfor %}
+                </select>
+                <small style="color: var(--text-tertiary); margin-top: var(--space-xs); display: block;">
+                    Selecione a configuração de API Matrix que será utilizada para enviar as mensagens HSM
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates HSM -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="message-square"></i>
+                Templates HSM
+            </h3>
+        </div>
+        <div class="card-body">
+            <!-- Template Principal -->
+            <div class="form-group">
+                <label for="hsm_template">Template HSM Principal <span style="color: var(--color-danger-600);">*</span></label>
+                <select name="hsm_template" id="hsm_template" class="form-control" required onchange="loadTemplateVariables()">
+                    <option value="">Selecione um template...</option>
+                    {% for template in templates_hsm %}
+                    <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}">
+                        {{ template.nome }} ({{ template.variaveis|length }} variáveis)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Template de Contingência -->
+            <div class="form-group">
+                <label for="hsm_template_contingencia">Template HSM Contingência (Opcional)</label>
+                <select name="hsm_template_contingencia" id="hsm_template_contingencia" class="form-control" onchange="loadTemplateVariablesContingencia()">
+                    <option value="">Nenhum (sem contingência)</option>
+                    {% for template in templates_hsm %}
+                    <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}">
+                        {{ template.nome }} ({{ template.variaveis|length }} variáveis)
+                    </option>
+                    {% endfor %}
+                </select>
+                <small style="color: var(--text-tertiary); margin-top: var(--space-xs); display: block;">
+                    Template usado quando o envio do template principal falhar
+                </small>
+            </div>
+
+            <!-- Segundo HSM (Opcional) -->
+            <div class="form-group">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                    <input type="checkbox" id="habilitar_segundo_hsm" name="habilitar_segundo_hsm" onchange="toggleSegundoHSM()">
+                    <label for="habilitar_segundo_hsm" style="margin: 0; cursor: pointer;">Enviar um segundo HSM após o primeiro</label>
+                </div>
+            </div>
+
+            <div id="segundo_hsm_section" style="display: none; padding: var(--space-lg); background: var(--surface-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+                <div class="form-group">
+                    <label for="hsm_template_segundo">Template do Segundo HSM</label>
+                    <select name="hsm_template_segundo" id="hsm_template_segundo" class="form-control" onchange="loadTemplateVariablesSegundo()">
+                        <option value="">Selecione um template...</option>
+                        {% for template in templates_hsm %}
+                        <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}">
+                            {{ template.nome }} ({{ template.variaveis|length }} variáveis)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="intervalo_segundo_hsm">Intervalo (minutos)</label>
+                    <input type="number" name="intervalo_segundo_hsm" id="intervalo_segundo_hsm" class="form-control" min="1" value="5">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-xs); display: block;">
+                        Tempo de espera entre o primeiro e o segundo HSM
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuração de Mídia -->
+    <div class="card" style="margin-bottom: var(--space-xl); border-left: 3px solid var(--color-success-600);">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 class="card-title" style="color: white;">
+                <i data-feather="paperclip"></i>
+                📎 Enviar Mídia com HSM (Opcional)
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); padding: var(--space-md); background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: var(--radius-md); border: 2px solid rgba(102, 126, 234, 0.3);">
+                    <input type="checkbox" id="enviar_com_midia" name="enviar_com_midia" onchange="toggleMidiaFields()">
+                    <label for="enviar_com_midia" style="margin: 0; cursor: pointer; font-weight: var(--font-weight-semibold); font-size: var(--font-size-base);">
+                        ✅ Enviar imagem/arquivo junto com o HSM
+                    </label>
+                </div>
+                <small style="color: var(--text-tertiary); display: block; margin-bottom: var(--space-md);">
+                    Marque para incluir uma mídia (imagem, PDF, documento) que será enviada junto com a mensagem HSM usando o campo <code>url_file</code> da API Matrix.
+                </small>
+            </div>
+
+            <div id="midia_fields_section" style="display: none; padding: var(--space-lg); background: var(--surface-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+                
+                <!-- Escolha do tipo de mídia -->
+                <div class="form-group" style="margin-bottom: var(--space-lg);">
+                    <label style="font-weight: var(--font-weight-semibold); margin-bottom: var(--space-sm);">Como deseja fornecer a mídia?</label>
+                    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-sm);">
+                        <label style="display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-md); border: 2px solid var(--border-primary); border-radius: var(--radius-md); cursor: pointer; flex: 1; transition: all 0.2s;" id="label_opcao_upload">
+                            <input type="radio" name="tipo_midia" value="upload" onchange="toggleTipoMidia('upload')" checked>
+                            <span>
+                                <strong>📁 Upload de Arquivo</strong><br>
+                                <small style="color: var(--text-tertiary);">Enviar do seu computador</small>
+                            </span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-md); border: 2px solid var(--border-primary); border-radius: var(--radius-md); cursor: pointer; flex: 1; transition: all 0.2s;" id="label_opcao_url">
+                            <input type="radio" name="tipo_midia" value="url" onchange="toggleTipoMidia('url')">
+                            <span>
+                                <strong>🔗 URL Externa</strong><br>
+                                <small style="color: var(--text-tertiary);">Link de arquivo já hospedado</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Campo de Upload -->
+                <div id="campo_upload" class="form-group" style="padding: var(--space-lg); background: linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(139, 195, 74, 0.05) 100%); border-radius: var(--radius-md); border: 2px dashed var(--color-success-500);">
+                    <label for="arquivo_midia">
+                        <i data-feather="upload"></i>
+                        Arquivo de Mídia
+                    </label>
+                    <input type="file" name="arquivo_midia" id="arquivo_midia" class="form-control" accept="image/*,.pdf,.doc,.docx" onchange="previewArquivo(this)">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-xs); display: block;">
+                        📁 Formatos suportados: Imagens (JPG, PNG, GIF), PDF, Documentos. Máximo 10MB.
+                    </small>
+                    <div id="preview_arquivo" style="margin-top: var(--space-md); display: none;">
+                        <!-- Preview será inserido aqui -->
+                    </div>
+                </div>
+
+                <!-- Campo de URL -->
+                <div id="campo_url" class="form-group" style="display: none; padding: var(--space-lg); background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(3, 169, 244, 0.05) 100%); border-radius: var(--radius-md); border: 2px dashed var(--color-primary-500);">
+                    <label for="url_midia">
+                        <i data-feather="link"></i>
+                        URL da Mídia
+                    </label>
+                    <input type="url" name="url_midia" id="url_midia" class="form-control" placeholder="https://exemplo.com/imagem.jpg" oninput="previewUrl(this.value)">
+                    <small style="color: var(--text-tertiary); margin-top: var(--space-xs); display: block;">
+                        🔗 Cole a URL completa do arquivo hospedado externamente. A URL deve ser acessível publicamente.
+                    </small>
+                    <div id="preview_url" style="margin-top: var(--space-md); display: none;">
+                        <!-- Preview será inserido aqui -->
+                    </div>
+                </div>
+
+                <!-- Informação de prioridade -->
+                <div style="margin-top: var(--space-md); padding: var(--space-md); background: var(--color-warning-50); border-left: 4px solid var(--color-warning-500); border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: start; gap: var(--space-sm);">
+                        <i data-feather="info" style="color: var(--color-warning-600); flex-shrink: 0; width: 20px; height: 20px;"></i>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-warning-800);">
+                            <strong>💡 Dica:</strong> Se você preencher ambos os campos, o arquivo enviado terá prioridade sobre a URL externa.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapeamento de Variáveis - Principal -->
+    <div id="variablesSection" class="card" style="margin-bottom: var(--space-xl); display: none;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="link"></i>
+                Mapeamento de Variáveis - Template Principal
+            </h3>
+        </div>
+        <div class="card-body">
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--surface-secondary); border-radius: var(--radius-md);">
+                <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);">
+                    <i data-feather="database" style="width: 16px; height: 16px;"></i>
+                    Campos Disponíveis dos Clientes
+                </h4>
+                
+                <!-- Campos Fixos -->
+                <div style="margin-bottom: var(--space-md);">
+                    <h5 style="color: var(--text-tertiary); margin-bottom: var(--space-xs); font-size: var(--font-size-xs);">Campos Padrão:</h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
+                        <span class="badge badge-info">nome_cliente</span>
+                        <span class="badge badge-info">codigo_cliente</span>
+                        <span class="badge badge-info">telefone</span>
+                        <span class="badge badge-info">valor_fatura</span>
+                        <span class="badge badge-info">vencimento_fatura</span>
+                        <span class="badge badge-info">codigo_barras</span>
+                        <span class="badge badge-info">pix_copia_cola</span>
+                        <span class="badge badge-info">link_boleto</span>
+                        <span class="badge badge-info">id_fatura</span>
+                    </div>
+                </div>
+
+                <!-- Campos Dinâmicos -->
+                {% if variaveis_dinamicas_info.tem_dados_dinamicos %}
+                <div>
+                    <h5 style="color: var(--color-success-600); margin-bottom: var(--space-xs); font-size: var(--font-size-xs);">
+                        <i data-feather="zap" style="width: 14px; height: 14px;"></i>
+                        Campos Dinâmicos (do SQL):
+                    </h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
+                        {% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}
+                        <span class="badge badge-success">{{ variavel.nome_direto }}</span>
+                        {% endfor %}
+                    </div>
+                    <div style="margin-top: var(--space-sm); font-size: var(--font-size-xs); color: var(--color-success-600);">
+                        <i data-feather="info" style="width: 14px; height: 14px;"></i>
+                        {{ variaveis_dinamicas_info.total_variaveis }} variáveis dinâmicas disponíveis
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div id="variableMappings">
+                <!-- Mapeamentos serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapeamento de Variáveis - Contingência -->
+    <div id="variablesSectionContingencia" class="card" style="margin-bottom: var(--space-xl); display: none; border-left: 3px solid var(--color-warning-600);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="shield"></i>
+                Mapeamento de Variáveis - Template Contingência
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="variableMappingsContingencia">
+                <!-- Mapeamentos de contingência serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapeamento de Variáveis - Segundo HSM -->
+    <div id="variablesSectionSegundo" class="card" style="margin-bottom: var(--space-xl); display: none; border-left: 3px solid var(--color-primary-600);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="repeat"></i>
+                Mapeamento de Variáveis - Segundo HSM
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="variableMappingsSegundo">
+                <!-- Mapeamentos do segundo HSM serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div style="display: flex; gap: var(--space-md); justify-content: flex-end; padding-top: var(--space-lg); border-top: 1px solid var(--border-primary);">
+        <a href="/whatsapp/execucao/{{ execucao.id }}/" class="btn btn-outline">
+            <i data-feather="x"></i>
+            Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+            <span class="loading" id="loadingSpinner" style="display: none;">
+                <div class="spinner"></div>
+            </span>
+            <i data-feather="send" id="sendIcon"></i>
+            <span id="btnText">Iniciar Envio HSM</span>
+        </button>
+    </div>
+</form>
+
+<style>
+.spinner {
+    display: inline-block;
+    border: 2px solid var(--color-gray-200);
+    border-top: 2px solid var(--color-primary-600);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+    margin-right: var(--space-xs);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.form-control {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary-600);
+    box-shadow: 0 0 0 3px rgba(51, 160, 255, 0.1);
+}
+
+.form-control option {
+    background: var(--surface-primary);
+    color: var(--text-primary);
+}
+
+.form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.variable-mapping {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+}
+
+.variable-mapping:hover {
+    border-color: var(--color-primary-600);
+    background: var(--surface-tertiary);
+}
+
+.variable-name {
+    flex: 0 0 200px;
+    font-family: var(--font-family-mono);
+    color: var(--color-primary-600);
+    font-weight: var(--font-weight-semibold);
+}
+
+.variable-arrow {
+    flex: 0 0 auto;
+    color: var(--text-tertiary);
+}
+
+.variable-field {
+    flex: 1;
+}
+</style>
+
+<script>
+feather.replace();
+
+// Campos disponíveis
+const camposDisponiveis = [
+    { value: 'nome_cliente', label: 'Nome do Cliente' },
+    { value: 'codigo_cliente', label: 'Código do Cliente' },
+    { value: 'telefone', label: 'Telefone' },
+    { value: 'valor_fatura', label: 'Valor da Fatura' },
+    { value: 'vencimento_fatura', label: 'Vencimento da Fatura' },
+    { value: 'codigo_barras', label: 'Código de Barras' },
+    { value: 'pix_copia_cola', label: 'PIX Copia e Cola' },
+    { value: 'link_boleto', label: 'Link do Boleto' },
+    { value: 'id_fatura', label: 'ID da Fatura' },
+    {% if variaveis_dinamicas_info.tem_dados_dinamicos %}
+    {% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}
+    { value: '{{ variavel.nome_direto }}', label: '{{ variavel.nome_direto }} (Dinâmico)' },
+    {% endfor %}
+    {% endif %}
+];
+
+function toggleSegundoHSM() {
+    const checkbox = document.getElementById('habilitar_segundo_hsm');
+    const section = document.getElementById('segundo_hsm_section');
+    const select = document.getElementById('hsm_template_segundo');
+    const intervalo = document.getElementById('intervalo_segundo_hsm');
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+        select.required = true;
+        intervalo.required = true;
+    } else {
+        section.style.display = 'none';
+        select.required = false;
+        intervalo.required = false;
+        select.value = '';
+        document.getElementById('variablesSectionSegundo').style.display = 'none';
+    }
+}
+
+function loadTemplateVariables() {
+    const select = document.getElementById('hsm_template');
+    const section = document.getElementById('variablesSection');
+    const container = document.getElementById('variableMappings');
+    
+    if (!select.value) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const variaveis = JSON.parse(option.getAttribute('data-variaveis') || '[]');
+    
+    container.innerHTML = '';
+    
+    variaveis.forEach((variavel, index) => {
+        const div = document.createElement('div');
+        div.className = 'variable-mapping';
+        div.innerHTML = `
+            <div class="variable-name">{{${variavel}}}</div>
+            <div class="variable-arrow"><i data-feather="arrow-right"></i></div>
+            <div class="variable-field">
+                <select name="variavel_${variavel}" class="form-control" required>
+                    <option value="">Selecione o campo...</option>
+                    ${camposDisponiveis.map(campo => 
+                        `<option value="${campo.value}">${campo.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    section.style.display = 'block';
+    feather.replace();
+}
+
+function loadTemplateVariablesContingencia() {
+    const select = document.getElementById('hsm_template_contingencia');
+    const section = document.getElementById('variablesSectionContingencia');
+    const container = document.getElementById('variableMappingsContingencia');
+    
+    if (!select.value) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const variaveis = JSON.parse(option.getAttribute('data-variaveis') || '[]');
+    
+    container.innerHTML = '';
+    
+    variaveis.forEach((variavel, index) => {
+        const div = document.createElement('div');
+        div.className = 'variable-mapping';
+        div.innerHTML = `
+            <div class="variable-name">{{${variavel}}}</div>
+            <div class="variable-arrow"><i data-feather="arrow-right"></i></div>
+            <div class="variable-field">
+                <select name="variavel_contingencia_${variavel}" class="form-control" required>
+                    <option value="">Selecione o campo...</option>
+                    ${camposDisponiveis.map(campo => 
+                        `<option value="${campo.value}">${campo.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    section.style.display = 'block';
+    feather.replace();
+}
+
+function loadTemplateVariablesSegundo() {
+    const select = document.getElementById('hsm_template_segundo');
+    const section = document.getElementById('variablesSectionSegundo');
+    const container = document.getElementById('variableMappingsSegundo');
+    
+    if (!select.value) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const variaveis = JSON.parse(option.getAttribute('data-variaveis') || '[]');
+    
+    container.innerHTML = '';
+    
+    variaveis.forEach((variavel, index) => {
+        const div = document.createElement('div');
+        div.className = 'variable-mapping';
+        div.innerHTML = `
+            <div class="variable-name">{{${variavel}}}</div>
+            <div class="variable-arrow"><i data-feather="arrow-right"></i></div>
+            <div class="variable-field">
+                <select name="variavel_segundo_${variavel}" class="form-control" required>
+                    <option value="">Selecione o campo...</option>
+                    ${camposDisponiveis.map(campo => 
+                        `<option value="${campo.value}">${campo.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    section.style.display = 'block';
+    feather.replace();
+}
+
+// ============================================
+// FUNÇÕES PARA CONFIGURAÇÃO DE MÍDIA
+// ============================================
+
+function toggleMidiaFields() {
+    const checkbox = document.getElementById('enviar_com_midia');
+    const section = document.getElementById('midia_fields_section');
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+        section.style.animation = 'slideDown 0.3s ease';
+    } else {
+        section.style.display = 'none';
+        // Limpa os campos
+        document.getElementById('arquivo_midia').value = '';
+        document.getElementById('url_midia').value = '';
+        document.getElementById('preview_arquivo').style.display = 'none';
+        document.getElementById('preview_url').style.display = 'none';
+    }
+}
+
+function toggleTipoMidia(tipo) {
+    const campoUpload = document.getElementById('campo_upload');
+    const campoUrl = document.getElementById('campo_url');
+    const labelUpload = document.getElementById('label_opcao_upload');
+    const labelUrl = document.getElementById('label_opcao_url');
+    
+    if (tipo === 'upload') {
+        campoUpload.style.display = 'block';
+        campoUrl.style.display = 'none';
+        labelUpload.style.borderColor = 'var(--color-success-500)';
+        labelUpload.style.background = 'rgba(76, 175, 80, 0.1)';
+        labelUrl.style.borderColor = 'var(--border-primary)';
+        labelUrl.style.background = 'transparent';
+        // Limpa campo de URL
+        document.getElementById('url_midia').value = '';
+        document.getElementById('preview_url').style.display = 'none';
+    } else {
+        campoUpload.style.display = 'none';
+        campoUrl.style.display = 'block';
+        labelUrl.style.borderColor = 'var(--color-primary-500)';
+        labelUrl.style.background = 'rgba(33, 150, 243, 0.1)';
+        labelUpload.style.borderColor = 'var(--border-primary)';
+        labelUpload.style.background = 'transparent';
+        // Limpa campo de arquivo
+        document.getElementById('arquivo_midia').value = '';
+        document.getElementById('preview_arquivo').style.display = 'none';
+    }
+}
+
+function previewArquivo(input) {
+    const preview = document.getElementById('preview_arquivo');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileName = file.name;
+        const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+        const fileType = file.type;
+        
+        let previewHTML = `
+            <div style="padding: var(--space-md); background: white; border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                    <i data-feather="file" style="color: var(--color-success-600);"></i>
+                    <div style="flex: 1;">
+                        <strong style="color: var(--text-primary);">${fileName}</strong><br>
+                        <small style="color: var(--text-tertiary);">${fileSize} MB</small>
+                    </div>
+                    <span class="badge badge-success">Selecionado</span>
+                </div>
+        `;
+        
+        // Se for imagem, mostra preview
+        if (fileType.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewHTML += `
+                    <img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); margin-top: var(--space-sm);">
+                `;
+                previewHTML += `</div>`;
+                preview.innerHTML = previewHTML;
+                preview.style.display = 'block';
+                feather.replace();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewHTML += `</div>`;
+            preview.innerHTML = previewHTML;
+            preview.style.display = 'block';
+            feather.replace();
+        }
+    }
+}
+
+function previewUrl(url) {
+    const preview = document.getElementById('preview_url');
+    
+    if (!url) {
+        preview.style.display = 'none';
+        return;
+    }
+    
+    // Valida se é uma URL válida
+    try {
+        new URL(url);
+    } catch (e) {
+        preview.innerHTML = `
+            <div style="padding: var(--space-md); background: var(--color-warning-50); border-radius: var(--radius-md); border: 1px solid var(--color-warning-500);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-feather="alert-triangle" style="color: var(--color-warning-600);"></i>
+                    <span style="color: var(--color-warning-800); font-size: var(--font-size-sm);">
+                        URL inválida. Certifique-se de incluir https://
+                    </span>
+                </div>
+            </div>
+        `;
+        preview.style.display = 'block';
+        feather.replace();
+        return;
+    }
+    
+    // Verifica extensão do arquivo
+    const extension = url.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
+    
+    let previewHTML = `
+        <div style="padding: var(--space-md); background: white; border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                <i data-feather="link" style="color: var(--color-primary-600);"></i>
+                <div style="flex: 1;">
+                    <strong style="color: var(--text-primary);">URL Externa</strong><br>
+                    <small style="color: var(--text-tertiary); word-break: break-all;">${url}</small>
+                </div>
+                <span class="badge badge-primary">Válida</span>
+            </div>
+    `;
+    
+    // Se for imagem, tenta mostrar preview
+    if (isImage) {
+        previewHTML += `
+            <img src="${url}" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); margin-top: var(--space-sm);" 
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="display: none; padding: var(--space-sm); background: var(--color-warning-50); border-radius: var(--radius-sm); margin-top: var(--space-sm);">
+                <small style="color: var(--color-warning-800);">⚠️ Não foi possível carregar preview da imagem</small>
+            </div>
+        `;
+    }
+    
+    previewHTML += `</div>`;
+    preview.innerHTML = previewHTML;
+    preview.style.display = 'block';
+    feather.replace();
+}
+
+// Submit do formulário
+document.getElementById('hsmForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const sendIcon = document.getElementById('sendIcon');
+    const btnText = document.getElementById('btnText');
+    
+    // Mostra loading
+    submitBtn.disabled = true;
+    loadingSpinner.style.display = 'inline-block';
+    sendIcon.style.display = 'none';
+    btnText.textContent = 'Processando...';
+    
+    try {
+        const formData = new FormData(this);
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            window.location.href = data.redirect_url || '/whatsapp/execucao/{{ execucao.id }}/';
+        } else {
+            alert('Erro: ' + data.message);
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = 'none';
+            sendIcon.style.display = 'inline';
+            btnText.textContent = 'Iniciar Envio HSM';
+        }
+    } catch (error) {
+        alert('Erro ao processar requisição: ' + error.message);
+        submitBtn.disabled = false;
+        loadingSpinner.style.display = 'none';
+        sendIcon.style.display = 'inline';
+        btnText.textContent = 'Iniciar Envio HSM';
+    }
+});
+</script>
+{% endblock %}

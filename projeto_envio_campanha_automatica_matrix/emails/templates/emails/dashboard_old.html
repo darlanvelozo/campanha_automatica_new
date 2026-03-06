@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Emails{% endblock %}
+
+{% block page_title %}📧 Dashboard de Emails{% endblock %}
+{% block page_subtitle %}Visão geral do sistema de envio de emails{% endblock %}
+
+{% block navbar_actions %}
+<a href="{% url 'emails:criar_campanha' %}" class="action-button success">
+    <i data-feather="plus" style="width: 14px; height: 14px;"></i>
+    Nova Campanha
+</a>
+<a href="{% url 'emails:listar_templates' %}" class="action-button">
+    <i data-feather="file-text" style="width: 14px; height: 14px;"></i>
+    Templates
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estatísticas Gerais -->
+<div class="grid-modern grid-4 fade-in">
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="mail" style="width: 20px; height: 20px; color: var(--accent-primary);"></i>
+                Campanhas
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                <span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ stats.total_campanhas }}
+                </span>
+                <span class="status-badge-modern status-concluida-modern">Total</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); font-size: var(--font-size-sm);">
+                <div>Ativas: <strong>{{ stats.campanhas_ativas }}</strong></div>
+                <div>Executando: <strong>{{ stats.campanhas_executando }}</strong></div>
+                <div>Agendadas: <strong>{{ stats.campanhas_agendadas }}</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="file-text" style="width: 20px; height: 20px; color: var(--accent-success);"></i>
+                Templates
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                <span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ stats.total_templates }}
+                </span>
+                <span class="status-badge-modern status-concluida-modern">Total</span>
+            </div>
+            <div style="font-size: var(--font-size-sm);">
+                Ativos: <strong>{{ stats.templates_ativos }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="server" style="width: 20px; height: 20px; color: var(--accent-warning);"></i>
+                Servidores SMTP
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                <span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ stats.total_configuracoes }}
+                </span>
+                <span class="status-badge-modern status-concluida-modern">Total</span>
+            </div>
+            <div style="font-size: var(--font-size-sm);">
+                Ativos: <strong>{{ stats.configuracoes_ativas }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="trending-up" style="width: 20px; height: 20px; color: var(--accent-info);"></i>
+                Últimos 30 dias
+            </div>
+        </div>
+        <div class="modern-card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                <span style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ envios_mes }}
+                </span>
+                <span class="status-badge-modern status-executando-modern">Envios</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); font-size: var(--font-size-sm);">
+                <div>Sucessos: <strong>{{ sucessos_mes }}</strong></div>
+                <div>Taxa: <strong>{{ taxa_sucesso_mes|floatformat:1 }}%</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Campanhas Recentes e Templates Populares -->
+<div class="grid-modern grid-2" style="margin-top: var(--space-xl);">
+    <!-- Campanhas Recentes -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="clock" style="width: 18px; height: 18px;"></i>
+                Campanhas Recentes
+            </div>
+            <a href="{% url 'emails:listar_campanhas' %}" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-xs);">
+                Ver Todas
+            </a>
+        </div>
+        <div class="modern-card-body">
+            {% if campanhas_recentes %}
+                <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                    {% for campanha in campanhas_recentes %}
+                    <div style="padding: var(--space-md); border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--bg-secondary);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-sm);">
+                            <h4 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-base);">
+                                <a href="{% url 'emails:detalhe_campanha' campanha.id %}" style="color: inherit; text-decoration: none;">
+                                    {{ campanha.nome }}
+                                </a>
+                            </h4>
+                            <span class="status-badge-modern status-{{ campanha.status }}-modern">
+                                {{ campanha.get_status_display }}
+                            </span>
+                        </div>
+                        <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-sm);">
+                            Template: {{ campanha.template_email.nome }}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: var(--font-size-sm);">
+                            <span>{{ campanha.data_criacao|date:"d/m/Y H:i" }}</span>
+                            {% if campanha.total_enviados > 0 %}
+                            <span>{{ campanha.total_enviados }} envios</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: var(--space-xl); color: var(--text-tertiary);">
+                    <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: var(--space-md);"></i>
+                    <p>Nenhuma campanha criada ainda</p>
+                    <a href="{% url 'emails:criar_campanha' %}" class="btn-modern btn-modern-primary">
+                        Criar Primeira Campanha
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Templates Populares -->
+    <div class="modern-card">
+        <div class="modern-card-header">
+            <div class="modern-card-title">
+                <i data-feather="star" style="width: 18px; height: 18px;"></i>
+                Templates Mais Usados
+            </div>
+            <a href="{% url 'emails:listar_templates' %}" class="btn-modern btn-modern-outline" style="font-size: var(--font-size-xs);">
+                Ver Todos
+            </a>
+        </div>
+        <div class="modern-card-body">
+            {% if templates_populares %}
+                <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                    {% for template in templates_populares %}
+                    <div style="padding: var(--space-md); border: 1px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--bg-secondary);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-sm);">
+                            <h4 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-base);">
+                                <a href="{% url 'emails:visualizar_template' template.id %}" style="color: inherit; text-decoration: none;">
+                                    {{ template.nome }}
+                                </a>
+                            </h4>
+                            <span class="status-badge-modern status-concluida-modern">
+                                {{ template.get_tipo_display }}
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: var(--font-size-sm);">
+                            <span>{{ template.total_enviados }} envios</span>
+                            <span>{{ template.get_taxa_sucesso|floatformat:1 }}% sucesso</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: var(--space-xl); color: var(--text-tertiary);">
+                    <i data-feather="file-text" style="width: 48px; height: 48px; margin-bottom: var(--space-md);"></i>
+                    <p>Nenhum template usado ainda</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Logs Recentes -->
+{% if logs_recentes %}
+<div class="modern-card" style="margin-top: var(--space-xl);">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="activity" style="width: 18px; height: 18px;"></i>
+            Atividade Recente
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+            {% for log in logs_recentes %}
+            <div style="padding: var(--space-sm); border-left: 3px solid {% if log.nivel == 'error' %}var(--accent-danger){% elif log.nivel == 'warning' %}var(--accent-warning){% elif log.nivel == 'info' %}var(--accent-primary){% else %}var(--accent-success){% endif %}; background: var(--bg-secondary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs);">
+                    <span style="font-weight: var(--font-weight-medium); color: var(--text-primary);">{{ log.acao }}</span>
+                    <span style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                        {{ log.data_criacao|date:"d/m H:i" }}
+                    </span>
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    {{ log.mensagem|truncatechars:80 }}
+                </div>
+                {% if log.campanha %}
+                <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: var(--space-xs);">
+                    Campanha: {{ log.campanha.nome }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh dos dados a cada 30 segundos
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

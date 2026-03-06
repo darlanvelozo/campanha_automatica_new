@@ -135,11 +135,14 @@ def pagina_processar_consulta(request):
     templates = TemplateSQL.objects.filter(ativo=True)
     credenciais_hubsoft = CredenciaisHubsoft.objects.filter(ativo=True)
     credenciais_banco = CredenciaisBancoDados.objects.filter(ativo=True)
+    execucoes_recentes = ConsultaExecucao.objects.order_by('-data_inicio')[:5]
     
     context = {
         'templates_sql': templates,
+        'templates_consulta': templates,  # Alias para compatibilidade com template
         'credenciais_hubsoft': credenciais_hubsoft,
-        'credenciais_banco': credenciais_banco
+        'credenciais_banco': credenciais_banco,
+        'execucoes_recentes': execucoes_recentes
     }
     
     return render(request, 'campanhas/processar_consulta.html', context)
@@ -189,37 +192,133 @@ def executar_consulta_sql(credencial_banco, template_sql, valores_variaveis=None
         
         # Log detalhado para debug
         logger.info(f"Executando consulta SQL com credencial: {credencial_banco.titulo}")
+        logger.info(f"Tipo de banco: {credencial_banco.tipo_banco}")
         logger.info(f"Query SQL original (primeiros 500 chars): {template_sql.consulta_sql[:500]}...")
         if valores_variaveis:
             logger.info(f"Variáveis utilizadas: {valores_variaveis}")
         logger.info(f"Query SQL processada (primeiros 500 chars): {query[:500]}...")
         logger.info(f"Tamanho da query: {len(query)} caracteres")
         
-        # Conectar ao PostgreSQL
-        conn = psycopg2.connect(
-            host=credencial_banco.host,
-            port=credencial_banco.porta,
-            database=credencial_banco.banco,
-            user=credencial_banco.usuario,
-            password=credencial_banco.senha
-        )
+        # Conectar ao banco de acordo com o tipo
+        conn = None
+        cursor = None
+        results = []
         
-        # Configurar o cursor para retornar dicionários
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        
-        # Executa a query como um bloco completo
-        cursor.execute(query)
-        results = cursor.fetchall()
-        
-        # Converte para lista de dicionários
-        results = [dict(row) for row in results]
+        if credencial_banco.tipo_banco == 'postgresql':
+            # PostgreSQL
+            conn = psycopg2.connect(
+                host=credencial_banco.host,
+                port=credencial_banco.porta,
+                database=credencial_banco.banco,
+                user=credencial_banco.usuario,
+                password=credencial_banco.senha
+            )
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cursor.execute(query)
+            results = cursor.fetchall()
+            results = [dict(row) for row in results]
+            
+        elif credencial_banco.tipo_banco == 'clickhouse':
+            # ClickHouse
+            from clickhouse_driver import Client
+            
+            logger.info(f"Conectando ao ClickHouse: {credencial_banco.host}:{credencial_banco.porta}")
+            logger.info(f"Database: {credencial_banco.banco}, User: {credencial_banco.usuario}")
+            
+            try:
+                client = Client(
+                    host=credencial_banco.host,
+                    port=credencial_banco.porta,
+                    database=credencial_banco.banco,
+                    user=credencial_banco.usuario,
+                    password=credencial_banco.senha,
+                    connect_timeout=10,
+                    send_receive_timeout=300,
+                    compression=True
+                )
+                
+                logger.info("Conexão estabelecida. Executando query...")
+                
+                # Executa a query e obtém resultados com nomes de colunas
+                result = client.execute(query, with_column_types=True)
+                rows = result[0]
+                columns_info = result[1]
+                column_names = [col[0] for col in columns_info]
+                
+                # Converte para lista de dicionários
+                results = [dict(zip(column_names, row)) for row in rows]
+                
+                logger.info(f"Query ClickHouse executada com sucesso. {len(results)} registros retornados.")
+                
+            except Exception as ch_error:
+                logger.error(f"Erro específico do ClickHouse: {type(ch_error).__name__}: {str(ch_error)}")
+                logger.error(f"Host: {credencial_banco.host}, Porta: {credencial_banco.porta}, Database: {credencial_banco.banco}")
+                raise
+            
+        elif credencial_banco.tipo_banco == 'mysql':
+            # MySQL
+            import mysql.connector
+            
+            conn = mysql.connector.connect(
+                host=credencial_banco.host,
+                port=credencial_banco.porta,
+                database=credencial_banco.banco,
+                user=credencial_banco.usuario,
+                password=credencial_banco.senha
+            )
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(query)
+            results = cursor.fetchall()
+            
+        elif credencial_banco.tipo_banco == 'sqlserver':
+            # SQL Server
+            import pyodbc
+            
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={credencial_banco.host},{credencial_banco.porta};"
+                f"DATABASE={credencial_banco.banco};"
+                f"UID={credencial_banco.usuario};"
+                f"PWD={credencial_banco.senha}"
+            )
+            conn = pyodbc.connect(conn_str)
+            cursor = conn.cursor()
+            cursor.execute(query)
+            columns = [column[0] for column in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            
+        elif credencial_banco.tipo_banco == 'oracle':
+            # Oracle
+            import cx_Oracle
+            
+            dsn = cx_Oracle.makedsn(
+                credencial_banco.host,
+                credencial_banco.porta,
+                service_name=credencial_banco.banco
+            )
+            conn = cx_Oracle.connect(
+                user=credencial_banco.usuario,
+                password=credencial_banco.senha,
+                dsn=dsn
+            )
+            cursor = conn.cursor()
+            cursor.execute(query)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            
+        else:
+            raise ValueError(f"Tipo de banco '{credencial_banco.tipo_banco}' não suportado")
         
         logger.info(f"Consulta SQL executada com sucesso. {len(results)} registros encontrados.")
         
-        cursor.close()
-        conn.close()
+        # Fechar conexões
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
         
         return results
+        
     except Exception as e:
         logger.error(f"Erro ao executar consulta SQL: {str(e)}")
         logger.error(f"Query que causou o erro: {query}")
@@ -282,9 +381,10 @@ def processar_cliente_api(api_client, cliente_data, execucao):
                 error_msg = "Credencial Hubsoft é obrigatória quando a consulta da API está habilitada"
                 print(f"❌ ERRO: {error_msg}")
                 raise Exception(error_msg)
-        # Consulta a API
-        print("🔍 CONSULTANDO API HUBSOFT...")
-        dados_cliente = api_client.consultar_cliente_financeiro(codigo_cliente)
+            
+            # Consulta a API
+            print("🔍 CONSULTANDO API HUBSOFT...")
+            dados_cliente = api_client.consultar_cliente_financeiro(codigo_cliente)
         
         if not dados_cliente:
             error_msg = "Falha ao consultar dados na API - resposta vazia ou erro de conexão"
@@ -352,8 +452,10 @@ def processar_cliente_api(api_client, cliente_data, execucao):
                 cliente_obj.id_fatura = id_fatura_desejada
             if cliente_data.get('valor'):
                 cliente_obj.valor_fatura = cliente_data.get('valor')
-            if cliente_data.get('data_vencimento'):
-                cliente_obj.vencimento_fatura = converter_data_br_para_iso(cliente_data.get('data_vencimento'))
+            # Só converte data se ela existir e não for vazia
+            data_venc_sql = cliente_data.get('data_vencimento')
+            if data_venc_sql and str(data_venc_sql).strip():
+                cliente_obj.vencimento_fatura = converter_data_br_para_iso(data_venc_sql)
             print("📊 Usando apenas dados do template SQL")
         
         # NOVO: Processa dados dinâmicos automaticamente dos templates SQL
@@ -696,7 +798,7 @@ def iniciar_processamento(request):
         
         # --- MUDANÇA 2: Resposta de sucesso retorna JSON com URL de redirect ---
         # Gera a URL para a página de detalhes da execução
-        redirect_url = reverse('detalhe_execucao', args=[execucao.id])
+        redirect_url = f'/whatsapp/execucao/{execucao.id}/'
 
         return JsonResponse({
             'status': 'success',
@@ -712,15 +814,363 @@ def iniciar_processamento(request):
             'status': 'error',
             'message': f'Ocorreu um erro interno no servidor: {str(e)}'
         }, status=500)
+
+@require_http_methods(["POST"])
+def iniciar_processamento_csv(request):
+    """Inicia o processamento de uma nova consulta a partir de um arquivo CSV"""
+    import csv
+    import chardet
+    
+    try:
+        titulo = request.POST.get('titulo')
+        arquivo_csv = request.FILES.get('arquivo_csv')
+        hubsoft_id = request.POST.get('credencial_hubsoft')
+        banco_id = request.POST.get('credencial_banco')
+        pular_consulta_api = request.POST.get('pular_consulta_api') == 'on'
+
+        # Validação básica
+        if not titulo:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Título é obrigatório.'
+            }, status=400)
+            
+        if not arquivo_csv:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Arquivo CSV é obrigatório.'
+            }, status=400)
+            
+        if not banco_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Credencial de Banco é obrigatória.'
+            }, status=400)
+        
+        # Validação condicional da credencial Hubsoft
+        if not pular_consulta_api and not hubsoft_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Credencial Hubsoft é obrigatória quando a consulta da API está habilitada.'
+            }, status=400)
+
+        # Ler o arquivo CSV
+        arquivo_bytes = arquivo_csv.read()
+        
+        # Detectar encoding
+        resultado_deteccao = chardet.detect(arquivo_bytes)
+        encoding = resultado_deteccao['encoding'] or 'utf-8'
+        
+        # Decodificar o conteúdo
+        try:
+            conteudo_csv = arquivo_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            conteudo_csv = arquivo_bytes.decode('latin-1')
+        
+        # Processar CSV
+        linhas_csv = conteudo_csv.splitlines()
+        leitor_csv = csv.DictReader(linhas_csv)
+        
+        # Validar cabeçalhos obrigatórios
+        campos_obrigatorios = ['codigo_cliente', 'nome_razaosocial', 'telefone_corrigido']
+        colunas = leitor_csv.fieldnames
+        
+        if not colunas:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Arquivo CSV vazio ou sem cabeçalho.'
+            }, status=400)
+        
+        campos_faltantes = [campo for campo in campos_obrigatorios if campo not in colunas]
+        if campos_faltantes:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Campos obrigatórios faltando no CSV: {", ".join(campos_faltantes)}'
+            }, status=400)
+        
+        # Criar nova execução (sem template SQL)
+        execucao = ConsultaExecucao.objects.create(
+            titulo=titulo,
+            template_sql=None,  # Não tem template SQL pois é upload direto
+            credencial_hubsoft_id=hubsoft_id if not pular_consulta_api else None,
+            credencial_banco_id=banco_id,
+            valores_variaveis={},
+            pular_consulta_api=pular_consulta_api,
+            status='pendente'
+        )
+        
+        # Processar dados do CSV
+        credencial_banco = CredenciaisBancoDados.objects.get(id=banco_id)
+        clientes_processados = []
+        erros = []
+        
+        for i, linha in enumerate(leitor_csv, start=2):  # start=2 porque linha 1 é cabeçalho
+            try:
+                # Validar campos obrigatórios
+                codigo_cliente = linha.get('codigo_cliente', '').strip()
+                nome_razaosocial = linha.get('nome_razaosocial', '').strip()
+                telefone_corrigido = linha.get('telefone_corrigido', '').strip()
+                
+                if not codigo_cliente or not nome_razaosocial or not telefone_corrigido:
+                    erros.append(f'Linha {i}: Campos obrigatórios vazios')
+                    continue
+                
+                # Campos opcionais
+                id_fatura = linha.get('id_fatura', '').strip() or None
+                vencimento_fatura = linha.get('vencimento_fatura', '').strip() or None
+                valor_fatura = linha.get('valor_fatura', '').strip() or None
+                pix = linha.get('pix', '').strip() or None
+                codigo_barras = linha.get('codigo_barras', '').strip() or None
+                link_boleto = linha.get('link_boleto', '').strip() or None
+                
+                # Converter vencimento_fatura para date se fornecido
+                if vencimento_fatura:
+                    try:
+                        from datetime import datetime
+                        vencimento_fatura = datetime.strptime(vencimento_fatura, '%Y-%m-%d').date()
+                    except ValueError:
+                        try:
+                            vencimento_fatura = datetime.strptime(vencimento_fatura, '%d/%m/%Y').date()
+                        except ValueError:
+                            erros.append(f'Linha {i}: Data de vencimento inválida')
+                            vencimento_fatura = None
+                
+                # Converter valor_fatura para Decimal se fornecido
+                if valor_fatura:
+                    try:
+                        from decimal import Decimal
+                        valor_fatura = Decimal(valor_fatura.replace(',', '.'))
+                    except:
+                        erros.append(f'Linha {i}: Valor da fatura inválido')
+                        valor_fatura = None
+                
+                # Coletar dados dinâmicos (campos extras além dos obrigatórios/opcionais)
+                campos_conhecidos = {
+                    'codigo_cliente', 'nome_razaosocial', 'telefone_corrigido',
+                    'id_fatura', 'vencimento_fatura', 'valor_fatura',
+                    'pix', 'codigo_barras', 'link_boleto'
+                }
+                dados_dinamicos = {
+                    chave: valor 
+                    for chave, valor in linha.items() 
+                    if chave not in campos_conhecidos and valor.strip()
+                }
+                
+                # Criar ou atualizar cliente
+                cliente, created = ClienteConsultado.objects.update_or_create(
+                    codigo_cliente=codigo_cliente,
+                    credencial_banco=credencial_banco,
+                    defaults={
+                        'nome_razaosocial': nome_razaosocial,
+                        'telefone_corrigido': telefone_corrigido,
+                        'id_fatura': id_fatura,
+                        'vencimento_fatura': vencimento_fatura,
+                        'valor_fatura': valor_fatura,
+                        'pix': pix,
+                        'codigo_barras': codigo_barras,
+                        'link_boleto': link_boleto,
+                        'dados_dinamicos': dados_dinamicos,
+                        'data_atualizacao': timezone.now()
+                    }
+                )
+                
+                if created:
+                    cliente.data_criacao = timezone.now()
+                    cliente.save()
+                
+                # Criar registro de consulta
+                ConsultaCliente.objects.create(
+                    execucao=execucao,
+                    cliente=cliente,
+                    dados_originais_sql=linha,  # Salva a linha completa do CSV
+                    sucesso_api=False  # Ainda não consultou API
+                )
+                
+                clientes_processados.append(cliente)
+                
+            except Exception as e:
+                erros.append(f'Linha {i}: {str(e)}')
+                logger.error(f"Erro ao processar linha {i} do CSV: {e}")
+        
+        # Atualizar totais da execução
+        execucao.total_registros_sql = len(clientes_processados)
+        execucao.save()
+        
+        if not clientes_processados:
+            execucao.atualizar_status('erro', f'Nenhum cliente válido encontrado no CSV. Erros: {"; ".join(erros[:5])}')
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Nenhum cliente válido encontrado no CSV. {len(erros)} erro(s) encontrado(s).'
+            }, status=400)
+        
+        # Se não pular API, iniciar processamento em thread separada
+        if not pular_consulta_api:
+            thread = threading.Thread(target=processar_consulta_csv_api, args=(execucao.id,))
+            thread.daemon = True
+            thread.start()
+        else:
+            # Se pular API, marcar como concluída
+            execucao.atualizar_status('concluida', f'{len(clientes_processados)} clientes importados do CSV.')
+        
+        redirect_url = f'/whatsapp/execucao/{execucao.id}/'
+        
+        mensagem = f'Processamento "{execucao.titulo}" iniciado com sucesso! {len(clientes_processados)} clientes importados.'
+        if erros:
+            mensagem += f' {len(erros)} linha(s) com erro foram ignoradas.'
+
+        return JsonResponse({
+            'status': 'success',
+            'message': mensagem,
+            'redirect_url': redirect_url,
+            'total_importados': len(clientes_processados),
+            'total_erros': len(erros)
+        })
+
+    except Exception as e:
+        logger.error(f"Erro ao iniciar processamento CSV: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Ocorreu um erro interno no servidor: {str(e)}'
+        }, status=500)
+
+def processar_consulta_csv_api(execucao_id):
+    """Processa consulta API para clientes importados via CSV"""
+    try:
+        execucao = ConsultaExecucao.objects.get(id=execucao_id)
+        execucao.atualizar_status('executando', 'Consultando API para clientes importados...')
+        
+        # Buscar clientes da execução
+        consultas_clientes = ConsultaCliente.objects.filter(execucao=execucao)
+        
+        if not consultas_clientes.exists():
+            execucao.atualizar_status('erro', 'Nenhum cliente encontrado para processar')
+            return
+        
+        # Inicializar cliente da API
+        api_client = HubsoftAPI(execucao.credencial_hubsoft)
+        
+        # Processar cada cliente
+        total_processados = 0
+        total_erros = 0
+        log_buffer = StringIO()
+        
+        for i, consulta_cliente in enumerate(consultas_clientes, 1):
+            # Verifica se a execução foi cancelada
+            execucao.refresh_from_db()
+            if execucao.status == 'cancelada':
+                logger.info(f"Processamento da execução {execucao_id} foi cancelado pelo usuário")
+                return
+            
+            cliente = consulta_cliente.cliente
+            log_buffer.write(f"Processando {i}/{consultas_clientes.count()}: {cliente.codigo_cliente}\n")
+            
+            try:
+                # Consultar API
+                resultado_api = api_client.consultar_cliente(cliente.codigo_cliente)
+                
+                if resultado_api.get('sucesso'):
+                    # Atualizar dados do cliente com resposta da API
+                    dados_api = resultado_api.get('dados', {})
+                    
+                    # Atualizar consulta
+                    consulta_cliente.dados_api_response = dados_api
+                    consulta_cliente.sucesso_api = True
+                    consulta_cliente.save()
+                    
+                    total_processados += 1
+                    log_buffer.write(f"✓ Sucesso: Cliente {cliente.codigo_cliente}\n")
+                else:
+                    erro_msg = resultado_api.get('erro', 'Erro desconhecido')
+                    consulta_cliente.erro_api = erro_msg
+                    consulta_cliente.sucesso_api = False
+                    consulta_cliente.save()
+                    
+                    total_erros += 1
+                    log_buffer.write(f"✗ Erro: {erro_msg}\n")
+                    
+            except Exception as e:
+                consulta_cliente.erro_api = str(e)
+                consulta_cliente.sucesso_api = False
+                consulta_cliente.save()
+                
+                total_erros += 1
+                log_buffer.write(f"✗ Erro: {str(e)}\n")
+            
+            # Delay entre requisições
+            time.sleep(0.5)
+            
+            # Atualiza progresso a cada 10 registros
+            if i % 10 == 0:
+                execucao.total_consultados_api = total_processados
+                execucao.total_erros = total_erros
+                execucao.log_execucao = log_buffer.getvalue()
+                execucao.save()
+        
+        # Finalizar execução
+        execucao.total_consultados_api = total_processados
+        execucao.total_erros = total_erros
+        execucao.log_execucao = log_buffer.getvalue()
+        execucao.atualizar_status('concluida', f'Processamento concluído. {total_processados} sucessos, {total_erros} erros.')
+        
+        logger.info(f"Processamento da execução {execucao_id} finalizado")
+        
+    except Exception as e:
+        logger.error(f"Erro no processamento da execução {execucao_id}: {e}")
+        try:
+            execucao = ConsultaExecucao.objects.get(id=execucao_id)
+            execucao.atualizar_status('erro', f'Erro durante processamento: {str(e)}')
+        except:
+            pass
     
 def listar_execucoes(request):
-    """Lista todas as execuções"""
+    """Lista todas as execuções com filtros de status e data"""
     execucoes = ConsultaExecucao.objects.all().order_by('-data_inicio')
+    
+    # Filtro por status
+    status_filtro = request.GET.get('status', '')
+    if status_filtro:
+        execucoes = execucoes.filter(status=status_filtro)
+    
+    # Filtro por data de início
+    data_inicio_de = request.GET.get('data_inicio_de', '')
+    data_inicio_ate = request.GET.get('data_inicio_ate', '')
+    
+    if data_inicio_de:
+        try:
+            from datetime import datetime
+            data_de = datetime.strptime(data_inicio_de, '%Y-%m-%d')
+            execucoes = execucoes.filter(data_inicio__gte=data_de)
+        except ValueError:
+            pass
+    
+    if data_inicio_ate:
+        try:
+            from datetime import datetime, timedelta
+            data_ate = datetime.strptime(data_inicio_ate, '%Y-%m-%d')
+            # Adiciona 23:59:59 para incluir todo o dia
+            data_ate = data_ate + timedelta(days=1) - timedelta(seconds=1)
+            execucoes = execucoes.filter(data_inicio__lte=data_ate)
+        except ValueError:
+            pass
+    
+    # Paginação
     paginator = Paginator(execucoes, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'campanhas/listar_execucoes.html', {'page_obj': page_obj})
+    # Verifica se há execuções em processamento para auto-refresh
+    has_processing = execucoes.filter(status__in=['executando', 'processando']).exists()
+    
+    context = {
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'has_processing': has_processing,
+        'filtro_status': status_filtro,
+        'filtro_data_inicio_de': data_inicio_de,
+        'filtro_data_inicio_ate': data_inicio_ate,
+    }
+    
+    return render(request, 'campanhas/listar_execucoes.html', context)
 
 def detalhe_execucao(request, execucao_id):
     """Mostra detalhes de uma execução específica"""
@@ -951,7 +1401,7 @@ def reiniciar_processamento(request, execucao_id):
         return JsonResponse({
             'status': 'success',
             'message': 'Processamento reiniciado com sucesso.',
-            'redirect_url': reverse('detalhe_execucao', args=[execucao.id])
+            'redirect_url': f'/whatsapp/execucao/{execucao.id}/'
         })
         
     except ConsultaExecucao.DoesNotExist:
@@ -1009,9 +1459,37 @@ def configurar_envio_hsm(request, execucao_id):
     
     # Verifica se a execução foi concluída com sucesso
     if execucao.status != 'concluida':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Apenas execuções concluídas podem ter HSM enviado.'
+            }, status=400)
         messages.error(request, 'Apenas execuções concluídas podem ter HSM enviado.')
-        return redirect('detalhe_execucao', execucao_id=execucao_id)
+        return redirect(f'/whatsapp/execucao/{execucao_id}/')
     
+    # TRATAMENTO POST - Inicia o envio de HSM
+    if request.method == 'POST':
+        try:
+            # Adiciona execucao_id ao POST data se não estiver presente
+            if not request.POST.get('execucao_id'):
+                # Cria uma cópia mutável do POST data
+                post_data = request.POST.copy()
+                post_data['execucao_id'] = execucao_id
+                request.POST = post_data
+            
+            # Redireciona para a view que processa o envio
+            return iniciar_envio_hsm(request)
+        except Exception as e:
+            logger.error(f"Erro ao iniciar envio HSM: {e}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Erro ao iniciar envio: {str(e)}'
+                }, status=500)
+            messages.error(request, f'Erro ao iniciar envio: {str(e)}')
+            return redirect(f'/whatsapp/execucao/{execucao_id}/configurar-hsm/')
+    
+    # TRATAMENTO GET - Exibe o formulário
     # Busca clientes válidos considerando se a API foi pulada
     if execucao.pular_consulta_api:
         # Se API foi pulada, considera todos os clientes da execução como válidos
@@ -1032,14 +1510,28 @@ def configurar_envio_hsm(request, execucao_id):
             messages.error(request, 'Nenhum cliente foi processado nesta execução.')
         else:
             messages.error(request, 'Nenhum cliente com dados válidos encontrado nesta execução.')
-        return redirect('detalhe_execucao', execucao_id=execucao_id)
+        return redirect(f'/whatsapp/execucao/{execucao_id}/')
     
     # Busca configurações e templates disponíveis
+    import json
     matrix_configs = MatrixAPIConfig.objects.filter(ativo=True)
     hsm_templates_padrao = HSMTemplate.objects.filter(ativo=True, tipo_template='padrao')
     hsm_templates_pagamento = HSMTemplate.objects.filter(ativo=True, tipo_template='pagamento')
-    hsm_templates = HSMTemplate.objects.filter(ativo=True)  # Todos os templates para compatibilidade
+    hsm_templates_list = list(HSMTemplate.objects.filter(ativo=True))  # Converte para lista
     configuracoes_pagamento = ConfiguracaoPagamentoHSM.objects.filter(ativo=True)
+    
+    # Adiciona variaveis_json para cada template (para o JavaScript)
+    for template in hsm_templates_list:
+        # Converte variaveis_descricao para o formato completo (com descrições)
+        variaveis_descricao = template.get_variaveis_descricao() if hasattr(template, 'get_variaveis_descricao') else template.variaveis_descricao
+        if not variaveis_descricao:
+            variaveis_descricao = {}
+        template.variaveis_json = json.dumps(variaveis_descricao)  # Agora passa o objeto completo
+        template.variaveis = list(variaveis_descricao.keys())
+    
+    print(f"🔍 DEBUG: hsm_templates_list tem {len(hsm_templates_list)} templates")
+    if hsm_templates_list:
+        print(f"   Primeiro template: {hsm_templates_list[0].nome}, variaveis: {hsm_templates_list[0].variaveis}")
     
     # Busca último envio para reutilizar configurações
     ultimo_envio = obter_ultimo_envio_hsm(execucao_id)
@@ -1051,7 +1543,7 @@ def configurar_envio_hsm(request, execucao_id):
         'execucao': execucao,
         'clientes_sucesso': clientes_sucesso,
         'matrix_configs': matrix_configs,
-        'hsm_templates': hsm_templates,  # Lista completa para compatibilidade
+        'hsm_templates': hsm_templates_list,  # Lista completa para compatibilidade
         'hsm_templates_padrao': hsm_templates_padrao,
         'hsm_templates_pagamento': hsm_templates_pagamento,
         'configuracoes_pagamento': configuracoes_pagamento,
@@ -1086,6 +1578,36 @@ def obter_variaveis_hsm_template(request, template_id):
             'status': 'error',
             'message': f'Erro interno: {str(e)}'
         }, status=500)
+
+def obter_url_absoluta_midia(url_relativa, request=None):
+    """
+    Converte uma URL relativa em URL absoluta para mídia
+    
+    Args:
+        url_relativa: URL relativa do arquivo (ex: /media/hsm_midias/2026/02/25/imagem.jpg)
+        request: Request do Django (opcional, para obter o domínio)
+    
+    Returns:
+        URL absoluta (ex: https://dominio.com/media/hsm_midias/2026/02/25/imagem.jpg)
+    """
+    if not url_relativa or not url_relativa.startswith('/'):
+        return url_relativa
+    
+    # Tenta obter do request
+    if request:
+        scheme = 'https' if request.is_secure() else 'http'
+        host = request.get_host()
+        return f"{scheme}://{host}{url_relativa}"
+    
+    # Fallback: tenta obter das settings
+    from django.conf import settings
+    if hasattr(settings, 'SITE_URL'):
+        site_url = settings.SITE_URL.rstrip('/')
+        return f"{site_url}{url_relativa}"
+    
+    # Último fallback: retorna URL relativa com aviso
+    logger.warning(f"Não foi possível converter URL relativa para absoluta: {url_relativa}. Configure SITE_URL nas settings.")
+    return url_relativa
 
 def serializar_valor_para_json(valor):
     """Converte valores para tipos serializáveis em JSON com tratamento especial para strings"""
@@ -1569,6 +2091,24 @@ def enviar_hsm_matrix_django(matrix_config, hsm_template, cliente, variaveis_hsm
             "contato": contato,
             "bol_incluir_atual": 1  # Inclui mesmo com atendimento em andamento
         }
+        
+        # Adiciona URL da mídia se configurado
+        if envio_matrix and envio_matrix.enviar_com_midia:
+            url_file = envio_matrix.get_url_midia()
+            if url_file:
+                # Se a URL é relativa, converte para URL completa
+                if url_file.startswith('/'):
+                    url_file = obter_url_absoluta_midia(url_file)
+                
+                payload["url_file"] = url_file
+                logger.info(f"Adicionada mídia ao HSM: {url_file}")
+                
+                # Salva a URL do arquivo no envio individual para referência
+                if envio_individual:
+                    envio_individual.url_file = url_file
+                    envio_individual.save()
+            else:
+                logger.warning(f"Envio configurado com mídia mas nenhuma URL disponível")
         
         # Adiciona variáveis se fornecidas (garantindo serialização)
         if variaveis_hsm:
@@ -2108,7 +2648,16 @@ def processar_envio_duplo_hsm(envio_individual, envio_matrix, matriz_config, tem
         if template_primeiro_a_usar.tipo_template == 'pagamento':
             # Prepara dados de pagamento para o primeiro HSM
             dados_pagamento = debug_payload_pagamento(cliente, envio_matrix)
-            url_file = getattr(cliente, 'link_boleto', None) or ""
+            
+            # Verifica se há mídia configurada no envio_matrix
+            if envio_matrix and envio_matrix.enviar_com_midia:
+                url_file = envio_matrix.get_url_midia()
+                if url_file and url_file.startswith('/'):
+                    url_file = obter_url_absoluta_midia(url_file)
+                logger.info(f"Usando mídia do EnvioHSMMatrix: {url_file}")
+            else:
+                # Fallback para link_boleto do cliente
+                url_file = getattr(cliente, 'link_boleto', None) or ""
             
             resultado_primeiro = enviar_hsm_pagamento_matrix_django(
                 matrix_config=matriz_config,
@@ -2175,7 +2724,16 @@ def processar_envio_duplo_hsm(envio_individual, envio_matrix, matriz_config, tem
         if template_segundo.tipo_template == 'pagamento':
             # Usa dados de pagamento específicos para o segundo HSM
             dados_pagamento_segundo = preparar_dados_pagamento_segundo(cliente, envio_matrix)
-            url_file_segundo = getattr(cliente, 'link_boleto', None) or ""
+            
+            # Verifica se há mídia configurada no envio_matrix
+            if envio_matrix and envio_matrix.enviar_com_midia:
+                url_file_segundo = envio_matrix.get_url_midia()
+                if url_file_segundo and url_file_segundo.startswith('/'):
+                    url_file_segundo = obter_url_absoluta_midia(url_file_segundo)
+                logger.info(f"Usando mídia do EnvioHSMMatrix para segundo HSM: {url_file_segundo}")
+            else:
+                # Fallback para link_boleto do cliente
+                url_file_segundo = getattr(cliente, 'link_boleto', None) or ""
             
             resultado_segundo = enviar_hsm_pagamento_matrix_django(
                 matrix_config=matriz_config,
@@ -2557,7 +3115,16 @@ def processar_envio_hsm_background(envio_matrix_id, apenas_pendentes=False):
                         
                         logger.info(f"=== PREPARANDO PAGAMENTO PARA CLIENTE {getattr(cliente, 'codigo_cliente', 'N/A')} ===")
                         dados_pagamento = debug_payload_pagamento(cliente, envio_matrix)
-                        url_file = getattr(cliente, 'link_boleto', None) or ""
+                        
+                        # Verifica se há mídia configurada no envio_matrix
+                        if envio_matrix and envio_matrix.enviar_com_midia:
+                            url_file = envio_matrix.get_url_midia()
+                            if url_file and url_file.startswith('/'):
+                                url_file = obter_url_absoluta_midia(url_file)
+                            logger.info(f"Usando mídia do EnvioHSMMatrix: {url_file}")
+                        else:
+                            # Fallback para link_boleto do cliente
+                            url_file = getattr(cliente, 'link_boleto', None) or ""
                         
                         try:
                             print(f"📄 URL do arquivo: {url_file}")
@@ -2749,7 +3316,7 @@ def enviar_hsm_configuracao_atual(request, execucao_id):
         thread.daemon = True
         thread.start()
         
-        redirect_url = reverse('detalhe_envio_hsm', args=[envio_matrix.id])
+        redirect_url = reverse('campanhas:detalhe_envio_hsm', args=[envio_matrix.id])
         
         return JsonResponse({
             'status': 'success',
@@ -2881,6 +3448,30 @@ def iniciar_envio_hsm(request):
                 
                 envio_data['configuracao_pagamento'] = configuracao_pagamento
         
+        # ========= CONFIGURAÇÕES DE MÍDIA =========
+        enviar_com_midia = request.POST.get('enviar_com_midia') == 'on'
+        envio_data['enviar_com_midia'] = enviar_com_midia
+        
+        if enviar_com_midia:
+            # Verifica se foi feito upload de arquivo
+            arquivo_midia = request.FILES.get('arquivo_midia')
+            if arquivo_midia:
+                envio_data['arquivo_midia'] = arquivo_midia
+                logger.info(f"Arquivo de mídia recebido: {arquivo_midia.name} ({arquivo_midia.size} bytes)")
+            
+            # Verifica se foi informada uma URL
+            url_midia = request.POST.get('url_midia')
+            if url_midia:
+                envio_data['url_midia'] = url_midia
+                logger.info(f"URL de mídia informada: {url_midia}")
+            
+            # Validação: pelo menos um deve estar preenchido
+            if not arquivo_midia and not url_midia:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Você marcou "Enviar com Mídia" mas não selecionou nenhum arquivo nem informou uma URL.'
+                }, status=400)
+        
         # ========= CONFIGURAÇÕES DO SEGUNDO HSM =========
         habilitar_segundo_hsm = request.POST.get('habilitar_segundo_hsm') == 'true'
         envio_data['habilitar_segundo_hsm'] = habilitar_segundo_hsm
@@ -2941,7 +3532,7 @@ def iniciar_envio_hsm(request):
         thread.daemon = True
         thread.start()
         
-        redirect_url = reverse('detalhe_envio_hsm', args=[envio_matrix.id])
+        redirect_url = reverse('campanhas:detalhe_envio_hsm', args=[envio_matrix.id])
         
         tipo_msg = "Pagamento" if hsm_template.tipo_template == 'pagamento' else "Padrão"
         duplo_msg = " (DUPLO)" if habilitar_segundo_hsm else ""
@@ -3070,42 +3661,71 @@ def status_envio_hsm_ajax(request, envio_id):
 
 @require_http_methods(["POST"])
 def cancelar_envio_hsm(request, envio_id):
-    """Cancela um envio HSM em andamento"""
+    """
+    Cancela um envio HSM em andamento.
+    
+    Lógica de cancelamento:
+    - Envios já enviados: marcados como 'concluido'
+    - Envios não enviados: mantidos como 'pendente' para possível retomada
+    - Status do envio principal: 'cancelado'
+    """
     try:
         envio = EnvioHSMMatrix.objects.get(id=envio_id)
         
-        if envio.status_envio not in ['pendente', 'enviando']:
+        if envio.status_envio not in ['pendente', 'enviando', 'pausado']:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Apenas envios pendentes ou em andamento podem ser cancelados.'
+                'message': 'Apenas envios pendentes, em andamento ou pausados podem ser cancelados.'
             }, status=400)
         
+        # Marca envios individuais que já foram enviados como concluídos
+        enviados_count = EnvioHSMIndividual.objects.filter(
+            envio_matrix=envio,
+            status='enviado'
+        ).update(status='concluido')
+        
+        # Mantém os não enviados como pendentes (para possível retomada)
+        # Não faz nada com os que estão 'pendente', eles já estão pendentes
+        
+        # Atualiza o status do envio principal
         envio.atualizar_status('cancelado', 'Envio cancelado pelo usuário')
         
-        # Cancela envios individuais pendentes
-        EnvioHSMIndividual.objects.filter(
-            envio_matrix=envio,
-            status='pendente'
-        ).update(status='cancelado')
+        # Recalcula os totais
+        envio.calcular_totais()
         
-        logger.info(f"Envio HSM {envio_id} cancelado pelo usuário")
+        logger.info(f"Envio HSM {envio_id} cancelado. {enviados_count} envios marcados como concluídos.")
         
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Envio cancelado com sucesso.'
-        })
+        messages.success(request, f'Envio cancelado com sucesso. {enviados_count} envios já realizados foram marcados como concluídos.')
+        
+        # Se for uma requisição AJAX, retorna JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Envio cancelado com sucesso.',
+                'enviados_concluidos': enviados_count
+            })
+        
+        # Se for requisição normal, redireciona
+        return redirect('campanhas:listar_envios_hsm')
         
     except EnvioHSMMatrix.DoesNotExist:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Envio não encontrado.'
-        }, status=404)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Envio não encontrado.'
+            }, status=404)
+        messages.error(request, 'Envio não encontrado.')
+        return redirect('campanhas:listar_envios_hsm')
+        
     except Exception as e:
         logger.error(f"Erro ao cancelar envio HSM {envio_id}: {str(e)}")
-        return JsonResponse({
-            'status': 'error',
-            'message': f'Erro ao cancelar envio: {str(e)}'
-        }, status=500)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Erro ao cancelar envio: {str(e)}'
+            }, status=500)
+        messages.error(request, f'Erro ao cancelar envio: {str(e)}')
+        return redirect('campanhas:listar_envios_hsm')
 
 def criar_template_hsm_dinamico(request, cliente_id):
     """

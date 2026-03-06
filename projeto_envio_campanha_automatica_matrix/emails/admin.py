@@ -10,7 +10,9 @@ from .models import (
     TemplateEmail, 
     CampanhaEmail, 
     EnvioEmailIndividual, 
-    LogEnvioEmail
+    LogEnvioEmail,
+    BaseLeads,
+    Lead
 )
 
 
@@ -431,6 +433,92 @@ class LogEnvioEmailAdmin(admin.ModelAdmin):
             messages.info(request, 'Nenhum log antigo encontrado para remoção.')
     
     limpar_logs_antigos.short_description = "Limpar logs antigos (60+ dias)"
+
+
+@admin.register(BaseLeads)
+class BaseLeadsAdmin(admin.ModelAdmin):
+    list_display = [
+        'nome', 'total_leads', 'total_validos', 'total_invalidos',
+        'ativo', 'data_importacao', 'arquivo_original_nome'
+    ]
+    list_filter = ['ativo', 'data_importacao']
+    search_fields = ['nome', 'descricao', 'arquivo_original_nome']
+    readonly_fields = [
+        'total_leads', 'total_validos', 'total_invalidos',
+        'data_importacao', 'colunas_disponiveis', 'coluna_email', 'coluna_nome'
+    ]
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'descricao', 'ativo')
+        }),
+        ('Arquivo', {
+            'fields': ('arquivo_original_nome',)
+        }),
+        ('Mapeamento de Colunas', {
+            'fields': ('coluna_email', 'coluna_nome', 'colunas_disponiveis')
+        }),
+        ('Estatísticas', {
+            'fields': ('total_leads', 'total_validos', 'total_invalidos')
+        }),
+        ('Data', {
+            'fields': ('data_importacao',)
+        }),
+    )
+    
+    actions = ['delete_selected']
+    
+    def has_delete_permission(self, request, obj=None):
+        return True
+
+
+class LeadInline(admin.TabularInline):
+    model = Lead
+    extra = 0
+    readonly_fields = ['email', 'nome', 'linha_original', 'valido', 'motivo_invalido', 'dados_adicionais']
+    can_delete = True
+    
+    fields = ['linha_original', 'nome', 'email', 'valido', 'motivo_invalido', 'dados_adicionais']
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Lead)
+class LeadAdmin(admin.ModelAdmin):
+    list_display = [
+        'nome', 'email', 'base_leads', 'valido', 'linha_original', 'data_criacao'
+    ]
+    list_filter = ['valido', 'base_leads', 'data_criacao']
+    search_fields = ['nome', 'email', 'base_leads__nome']
+    readonly_fields = ['base_leads', 'email', 'nome', 'linha_original', 'valido', 'motivo_invalido', 'dados_adicionais', 'data_criacao']
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('base_leads', 'nome', 'email', 'valido')
+        }),
+        ('Dados do CSV', {
+            'fields': ('linha_original', 'dados_adicionais')
+        }),
+        ('Validação', {
+            'fields': ('motivo_invalido',)
+        }),
+        ('Data', {
+            'fields': ('data_criacao',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        return True
+    
+    actions = ['delete_selected']
+
+
+# Adicionar inline de leads ao BaseLeadsAdmin
+BaseLeadsAdmin.inlines = [LeadInline]
 
 
 # Customização do admin site

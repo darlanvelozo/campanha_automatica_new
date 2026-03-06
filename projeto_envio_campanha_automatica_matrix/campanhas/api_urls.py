@@ -5,6 +5,7 @@ from .api_views import (
     EnvioHSMMatrixViewSet, HSMTemplateViewSet, MatrixAPIConfigViewSet,
     ConfiguracaoPagamentoHSMViewSet
 )
+from .api_views_log import APILogViewSet, APILogEstatisticaViewSet
 
 # Cria o router e registra as viewsets
 router = DefaultRouter()
@@ -16,6 +17,10 @@ router.register(r'envios-hsm', EnvioHSMMatrixViewSet, basename='envio-hsm')
 router.register(r'hsm-templates', HSMTemplateViewSet, basename='hsm-template')
 router.register(r'configuracoes-matrix', MatrixAPIConfigViewSet, basename='configuracao-matrix')
 router.register(r'configuracoes-pagamento-hsm', ConfiguracaoPagamentoHSMViewSet, basename='configuracao-pagamento-hsm')
+
+# ViewSets para Logs de API
+router.register(r'logs', APILogViewSet, basename='log')
+router.register(r'logs-estatisticas', APILogEstatisticaViewSet, basename='log-estatistica')
 
 urlpatterns = [
     path('', include(router.urls)),

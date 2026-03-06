@@ -691,7 +691,7 @@
 <body>
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="{% url 'pagina_processar_consulta' %}" class="navbar-brand">
+        <a href="{% url 'campanhas:pagina_processar_consulta' %}" class="navbar-brand">
             <div class="brand-icon">
                 <i data-feather="zap" style="width: 18px; height: 18px;"></i>
             </div>
@@ -700,7 +700,7 @@
 
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a href="{% url 'pagina_processar_consulta' %}" class="nav-link {% if request.resolver_match.url_name == 'pagina_processar_consulta' %}active{% endif %}">
+                <a href="{% url 'campanhas:pagina_processar_consulta' %}" class="nav-link {% if request.resolver_match.url_name == 'pagina_processar_consulta' %}active{% endif %}">
                     <i data-feather="play-circle" style="width: 16px; height: 16px;"></i>
                     Nova Consulta
                 </a>
@@ -712,15 +712,15 @@
                     Execuções
                 </a>
                 <div class="dropdown-menu">
-                    <a href="{% url 'listar_execucoes' %}" class="dropdown-item">
+                    <a href="{% url 'campanhas:listar_execucoes' %}" class="dropdown-item">
                         <i data-feather="clock" style="width: 14px; height: 14px;"></i>
                         Histórico de Execuções
                     </a>
-                    <a href="{% url 'listar_execucoes' %}?status=executando" class="dropdown-item">
+                    <a href="{% url 'campanhas:listar_execucoes' %}?status=executando" class="dropdown-item">
                         <i data-feather="activity" style="width: 14px; height: 14px;"></i>
                         Em Andamento
                     </a>
-                    <a href="{% url 'listar_execucoes' %}?status=concluida" class="dropdown-item">
+                    <a href="{% url 'campanhas:listar_execucoes' %}?status=concluida" class="dropdown-item">
                         <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
                         Concluídas
                     </a>
@@ -733,15 +733,15 @@
                     HSM
                 </a>
                 <div class="dropdown-menu">
-                    <a href="{% url 'listar_envios_hsm' %}" class="dropdown-item">
+                    <a href="{% url 'campanhas:listar_envios_hsm' %}" class="dropdown-item">
                         <i data-feather="message-square" style="width: 14px; height: 14px;"></i>
                         Envios HSM
                     </a>
-                    <a href="{% url 'listar_envios_hsm' %}?status=enviando" class="dropdown-item">
+                    <a href="{% url 'campanhas:listar_envios_hsm' %}?status=enviando" class="dropdown-item">
                         <i data-feather="upload" style="width: 14px; height: 14px;"></i>
                         Em Envio
                     </a>
-                    <a href="{% url 'listar_envios_hsm' %}?status=concluido" class="dropdown-item">
+                    <a href="{% url 'campanhas:listar_envios_hsm' %}?status=concluido" class="dropdown-item">
                         <i data-feather="check-square" style="width: 14px; height: 14px;"></i>
                         Concluídos
                     </a>
@@ -787,19 +787,19 @@
                     Campanhas Automáticas
                 </a>
                 <div class="dropdown-menu">
-                    <a href="{% url 'dashboard' %}" class="dropdown-item">
+                    <a href="{% url 'native:dashboard' %}" class="dropdown-item">
                         <i data-feather="home" style="width: 14px; height: 14px;"></i>
                         Dashboard
                     </a>
-                    <a href="{% url 'campaign_list' %}" class="dropdown-item">
+                    <a href="{% url 'native:campaign_list' %}" class="dropdown-item">
                         <i data-feather="list" style="width: 14px; height: 14px;"></i>
                         Todas as Campanhas
                     </a>
-                    <a href="{% url 'campaign_list' %}?status=active" class="dropdown-item">
+                    <a href="{% url 'native:campaign_list' %}?status=active" class="dropdown-item">
                         <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
                         Campanhas Ativas
                     </a>
-                    <a href="{% url 'campaign_list' %}?status=inactive" class="dropdown-item">
+                    <a href="{% url 'native:campaign_list' %}?status=inactive" class="dropdown-item">
                         <i data-feather="x-circle" style="width: 14px; height: 14px;"></i>
                         Campanhas Inativas
                     </a>

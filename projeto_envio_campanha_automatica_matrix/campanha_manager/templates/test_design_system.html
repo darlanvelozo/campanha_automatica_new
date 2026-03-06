@@ -1,0 +1,293 @@
+{% extends 'base_saas.html' %}
+
+{% block title %}Teste - Design System{% endblock %}
+
+{% block page_title %}Teste do Design System{% endblock %}
+{% block page_subtitle %}Página de teste para validar todos os componentes visuais{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-primary">
+    <i data-feather="plus"></i>
+    Botão Primário
+</button>
+<button class="btn btn-success">
+    <i data-feather="check"></i>
+    Botão Success
+</button>
+<button class="btn btn-danger">
+    <i data-feather="x"></i>
+    Botão Danger
+</button>
+<button class="btn btn-outline">
+    Botão Outline
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Grid de Teste -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Grid System</h2>
+    <div class="grid grid-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Card 1</div>
+            </div>
+            <div class="card-body">
+                Conteúdo do card de teste
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Card 2</div>
+            </div>
+            <div class="card-body">
+                Conteúdo do card de teste
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Card 3</div>
+            </div>
+            <div class="card-body">
+                Conteúdo do card de teste
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Card 4</div>
+            </div>
+            <div class="card-body">
+                Conteúdo do card de teste
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Stat Cards</h2>
+    <div class="grid grid-3">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background-color: var(--color-primary-100); color: var(--color-primary-600);">
+                    <i data-feather="users"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">1,234</div>
+            <div class="stat-card-label">Total de Usuários</div>
+            <div class="stat-card-change positive">
+                <i data-feather="trending-up" style="width: 12px; height: 12px;"></i>
+                +12.5% este mês
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background-color: var(--color-success-100); color: var(--color-success-600);">
+                    <i data-feather="mail"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">5,678</div>
+            <div class="stat-card-label">Emails Enviados</div>
+            <div class="stat-card-change positive">
+                <i data-feather="trending-up" style="width: 12px; height: 12px;"></i>
+                +8.2% este mês
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background-color: var(--color-warning-100); color: var(--color-warning-600);">
+                    <i data-feather="activity"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">890</div>
+            <div class="stat-card-label">Campanhas Ativas</div>
+            <div class="stat-card-change negative">
+                <i data-feather="trending-down" style="width: 12px; height: 12px;"></i>
+                -3.1% este mês
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botões -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Botões</h2>
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+        <button class="btn btn-primary">Primário</button>
+        <button class="btn btn-success">Success</button>
+        <button class="btn btn-danger">Danger</button>
+        <button class="btn btn-outline">Outline</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-primary btn-sm">Pequeno</button>
+        <button class="btn btn-primary btn-lg">Grande</button>
+        <button class="btn btn-primary" disabled>Desabilitado</button>
+    </div>
+</div>
+
+<!-- Badges -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Badges</h2>
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+        <span class="badge badge-primary">Primary</span>
+        <span class="badge badge-success">Success</span>
+        <span class="badge badge-warning">Warning</span>
+        <span class="badge badge-danger">Danger</span>
+        <span class="badge badge-info">Info</span>
+        <span class="badge badge-gray">Gray</span>
+    </div>
+</div>
+
+<!-- Alerts -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Alerts</h2>
+    <div style="display: grid; gap: var(--space-md);">
+        <div class="alert alert-success">
+            <i data-feather="check-circle" style="width: 20px; height: 20px;"></i>
+            <span>Operação realizada com sucesso!</span>
+        </div>
+        <div class="alert alert-error">
+            <i data-feather="alert-circle" style="width: 20px; height: 20px;"></i>
+            <span>Ocorreu um erro ao processar sua solicitação.</span>
+        </div>
+        <div class="alert alert-warning">
+            <i data-feather="alert-triangle" style="width: 20px; height: 20px;"></i>
+            <span>Atenção! Verifique as configurações antes de continuar.</span>
+        </div>
+        <div class="alert alert-info">
+            <i data-feather="info" style="width: 20px; height: 20px;"></i>
+            <span>Esta é uma informação importante para você.</span>
+        </div>
+    </div>
+</div>
+
+<!-- Formulário -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Formulários</h2>
+    <div class="card" style="max-width: 600px;">
+        <div class="card-body">
+            <form>
+                <div class="form-group">
+                    <label class="form-label form-label-required">Nome</label>
+                    <input type="text" class="form-input" placeholder="Digite seu nome">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" placeholder="Digite seu email">
+                    <span class="form-help">Seu email não será compartilhado</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select">
+                        <option>Selecione uma opção</option>
+                        <option>Ativo</option>
+                        <option>Inativo</option>
+                        <option>Pendente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-textarea" placeholder="Digite uma descrição"></textarea>
+                </div>
+                <div class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="aceito">
+                        <label class="form-check-label" for="aceito">Aceito os termos e condições</label>
+                    </div>
+                </div>
+                <div style="display: flex; gap: var(--space-md);">
+                    <button type="submit" class="btn btn-primary">Enviar</button>
+                    <button type="button" class="btn btn-outline">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Tabelas</h2>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#001</td>
+                    <td>João Silva</td>
+                    <td><span class="badge badge-success">Ativo</span></td>
+                    <td>09/01/2026</td>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-ghost"><i data-feather="edit-2" style="width: 14px; height: 14px;"></i></button>
+                        <button class="btn btn-sm btn-ghost"><i data-feather="trash-2" style="width: 14px; height: 14px;"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>#002</td>
+                    <td>Maria Santos</td>
+                    <td><span class="badge badge-warning">Pendente</span></td>
+                    <td>08/01/2026</td>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-ghost"><i data-feather="edit-2" style="width: 14px; height: 14px;"></i></button>
+                        <button class="btn btn-sm btn-ghost"><i data-feather="trash-2" style="width: 14px; height: 14px;"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>#003</td>
+                    <td>Pedro Oliveira</td>
+                    <td><span class="badge badge-danger">Inativo</span></td>
+                    <td>07/01/2026</td>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-ghost"><i data-feather="edit-2" style="width: 14px; height: 14px;"></i></button>
+                        <button class="btn btn-sm btn-ghost"><i data-feather="trash-2" style="width: 14px; height: 14px;"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Loading e Empty State -->
+<div class="section">
+    <h2 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-lg); color: var(--text-primary);">Estados</h2>
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Loading</div>
+            </div>
+            <div class="card-body" style="display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                <div class="spinner"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Empty State</div>
+            </div>
+            <div class="card-body">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <div class="empty-state-title">Nenhum item encontrado</div>
+                    <div class="empty-state-description">Não há itens para exibir no momento. Comece criando um novo item.</div>
+                    <button class="btn btn-primary">
+                        <i data-feather="plus"></i>
+                        Criar Novo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar ícones ao carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

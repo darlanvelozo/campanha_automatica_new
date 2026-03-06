@@ -1,475 +1,267 @@
-{% extends 'base.html' %}
+{% extends 'base_saas.html' %}
+{% load static %}
 
-{% block title %}Envios HSM - Sistema de Campanhas{% endblock %}
+{% block title %}Envios HSM - Sistema{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item">WhatsApp</span>
+<span class="breadcrumb-item">Envios HSM</span>
+{% endblock %}
 
 {% block page_title %}Envios HSM{% endblock %}
-{% block page_subtitle %}Visualize e gerencie todos os envios de mensagens HSM{% endblock %}
+{% block page_subtitle %}Visualize e gerencie todos os envios de mensagens HSM via Matrix API{% endblock %}
 
-{% block navbar_actions %}
-<a href="{% url 'listar_execucoes' %}" class="action-button">
-    <i data-feather="list" style="width: 14px; height: 14px;"></i>
+{% block page_actions %}
+<a href="/whatsapp/" class="btn btn-outline">
+    <i data-feather="list"></i>
     Ver Execuções
+</a>
+<a href="/whatsapp/processar-consulta/" class="btn btn-primary">
+    <i data-feather="plus"></i>
+    Nova Consulta
 </a>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Layout da aplicação */
-    .app-layout {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: var(--space-lg);
-    }
-
-    .page-header {
-        margin-bottom: var(--space-xl);
-    }
-
-    .breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-md);
-        font-size: var(--font-size-sm);
-        color: var(--text-muted);
-    }
-
-    .breadcrumb a {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        color: var(--text-muted);
-        text-decoration: none;
-        transition: color var(--transition-fast);
-    }
-
-    .breadcrumb a:hover {
-        color: var(--accent-primary);
-    }
-
-    .page-title-section {
-        margin-top: var(--space-md);
-    }
-
-    .page-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        font-size: var(--font-size-3xl);
-        font-weight: var(--font-weight-bold);
-        color: var(--text-primary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .page-subtitle {
-        color: var(--text-tertiary);
-        font-size: var(--font-size-lg);
-        margin: 0;
-    }
-
-    /* Grid de envios HSM */
-    .hsm-grid {
-        display: grid;
-        gap: var(--space-md);
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    }
-
-    .hsm-card-modern {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-primary);
-        border-radius: var(--radius-lg);
-        padding: var(--space-lg);
-        text-decoration: none;
-        color: inherit;
-        display: block;
-        transition: all var(--transition-normal);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .hsm-card-modern::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--accent-success), var(--accent-info));
-        transform: scaleX(0);
-        transition: transform var(--transition-normal);
-    }
-
-    .hsm-card-modern:hover {
-        border-color: var(--accent-success);
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-xl);
-    }
-
-    .hsm-card-modern:hover::before {
-        transform: scaleX(1);
-    }
-
-    .hsm-card-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        margin-bottom: var(--space-md);
-        gap: var(--space-md);
-    }
-
-    .hsm-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        font-size: var(--font-size-lg);
-        font-weight: var(--font-weight-semibold);
-        color: var(--text-primary);
-        flex: 1;
-    }
-
-    .hsm-card-body {
-        margin-bottom: var(--space-lg);
-    }
-
-    .hsm-info-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        color: var(--text-secondary);
-        font-size: var(--font-size-sm);
-        margin-bottom: var(--space-sm);
-    }
-
-    .hsm-info-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .hsm-card-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-top: var(--space-md);
-        border-top: 1px solid var(--border-secondary);
-    }
-
-    .hsm-stats-modern {
-        display: flex;
-        gap: var(--space-md);
-        flex-wrap: wrap;
-    }
-
-    .stat-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: var(--font-size-xs);
-        color: var(--text-tertiary);
-        padding: var(--space-xs) var(--space-sm);
-        background: var(--bg-tertiary);
-        border-radius: var(--radius-sm);
-    }
-
-    .stat-success {
-        color: var(--accent-success);
-        background: rgba(40, 167, 69, 0.1);
-    }
-
-    .stat-error {
-        color: var(--accent-danger);
-        background: rgba(248, 81, 73, 0.1);
-    }
-
-    .stat-pending {
-        color: var(--accent-warning);
-        background: rgba(255, 171, 0, 0.1);
-    }
-
-    /* Status badges específicos para envios HSM */
-    .status-pendente-modern {
-        background: rgba(108, 117, 125, 0.1);
-        color: var(--text-secondary);
-        border: 1px solid rgba(108, 117, 125, 0.2);
-    }
-
-    .status-enviando-modern {
-        background: rgba(0, 123, 255, 0.1);
-        color: var(--accent-primary);
-        border: 1px solid rgba(0, 123, 255, 0.2);
-    }
-
-    .status-concluido-modern {
-        background: rgba(40, 167, 69, 0.1);
-        color: var(--accent-success);
-        border: 1px solid rgba(40, 167, 69, 0.2);
-    }
-
-    .status-cancelado-modern {
-        background: rgba(108, 117, 125, 0.1);
-        color: var(--text-muted);
-        border: 1px solid rgba(108, 117, 125, 0.2);
-    }
-
-    .status-erro-modern {
-        background: rgba(248, 81, 73, 0.1);
-        color: var(--accent-danger);
-        border: 1px solid rgba(248, 81, 73, 0.2);
-    }
-
-    .status-pausado-modern {
-        background: rgba(255, 171, 0, 0.1);
-        color: var(--accent-warning);
-        border: 1px solid rgba(255, 171, 0, 0.2);
-    }
-
-    /* Estado vazio */
-    .empty-state-modern {
-        text-align: center;
-        padding: var(--space-3xl) var(--space-lg);
-        color: var(--text-tertiary);
-    }
-
-    .empty-icon {
-        margin-bottom: var(--space-lg);
-    }
-
-    .empty-state-modern h3 {
-        font-size: var(--font-size-xl);
-        font-weight: var(--font-weight-semibold);
-        color: var(--text-secondary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .empty-state-modern p {
-        font-size: var(--font-size-base);
-        margin-bottom: var(--space-lg);
-    }
-
-    /* Paginação moderna */
-    .pagination-modern {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--space-sm);
-        margin-top: var(--space-xl);
-        padding-top: var(--space-lg);
-        border-top: 1px solid var(--border-secondary);
-    }
-
-    .pagination-numbers {
-        display: flex;
-        gap: var(--space-xs);
-    }
-
-    /* Responsividade */
-    @media (max-width: 768px) {
-        .app-layout {
-            padding: var(--space-md);
-        }
-
-        .hsm-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .page-title {
-            font-size: var(--font-size-2xl);
-        }
-
-        .pagination-modern {
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-
-        .hsm-stats-modern {
-            flex-direction: column;
-            gap: var(--space-sm);
-        }
-
-        .hsm-card-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--space-sm);
-        }
-    }
-
-    @media (max-width: 480px) {
-        .hsm-card-modern {
-            padding: var(--space-md);
-        }
-
-        .pagination-numbers {
-            flex-wrap: wrap;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="app-layout">
-    <header class="page-header fade-in">
-        <div class="breadcrumb">
-            <a href="{% url 'listar_execucoes' %}">
-                <i data-feather="home" style="width: 14px; height: 14px;"></i>
-                Sistema
+<!-- Filtros -->
+<div class="card" style="margin-bottom: var(--space-lg);">
+    <div class="card-body">
+        <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status" onchange="this.form.submit()">
+                    <option value="">Todos os Status</option>
+                    <option value="pendente" {% if request.GET.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                    <option value="enviando" {% if request.GET.status == 'enviando' %}selected{% endif %}>Enviando</option>
+                    <option value="concluido" {% if request.GET.status == 'concluido' %}selected{% endif %}>Concluído</option>
+                    <option value="pausado" {% if request.GET.status == 'pausado' %}selected{% endif %}>Pausado</option>
+                    <option value="cancelado" {% if request.GET.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                    <option value="erro" {% if request.GET.status == 'erro' %}selected{% endif %}>Erro</option>
+                </select>
+            </div>
+            {% if request.GET.status %}
+            <a href="?" class="btn btn-ghost">
+                <i data-feather="x"></i>
+                Limpar Filtros
             </a>
-            <i data-feather="chevron-right" style="width: 12px; height: 12px; color: var(--text-muted);"></i>
-            <span>Envios HSM</span>
-        </div>
-        <div class="page-title-section">
-            <h1 class="page-title">
-                <i data-feather="send" style="width: 28px; height: 28px; color: var(--accent-success);"></i>
-                Envios HSM
-            </h1>
-            <p class="page-subtitle">Visualize e gerencie todos os envios de mensagens HSM</p>
-        </div>
-    </header>
-
-    <main class="content-area">
-        <div class="modern-card fade-in">
-            <div class="modern-card-header">
-                <div class="modern-card-title">
-                    <i data-feather="message-square" style="width: 20px; height: 20px;"></i>
-                    Lista de Envios HSM
-                </div>
-                <a href="{% url 'listar_execucoes' %}" class="btn-modern btn-modern-outline">
-                    <i data-feather="arrow-left" style="width: 16px; height: 16px;"></i>
-                    Voltar às Execuções
-                </a>
-            </div>
-            
-            <div class="modern-card-body">
-                {% if page_obj %}
-                    <div class="hsm-grid">
-                        {% for envio in page_obj %}
-                            <a href="{% url 'detalhe_envio_hsm' envio.id %}" class="hsm-card-modern">
-                                <div class="hsm-card-header">
-                                    <div class="hsm-title">
-                                        <i data-feather="send" style="width: 18px; height: 18px; color: var(--accent-success);"></i>
-                                        <span>{{ envio.titulo|default:"Envio #"|add:envio.id }}</span>
-                                    </div>
-                                    <span class="status-badge-modern status-{{ envio.status_envio }}-modern">
-                                        {{ envio.get_status_envio_display }}
-                                    </span>
-                                </div>
-                                
-                                <div class="hsm-card-body">
-                                    <div class="hsm-info-item">
-                                        <i data-feather="terminal" style="width: 14px; height: 14px;"></i>
-                                        <span>{{ envio.consulta_execucao.titulo|default:"Execução não definida" }}</span>
-                                    </div>
-                                    <div class="hsm-info-item">
-                                        <i data-feather="message-circle" style="width: 14px; height: 14px;"></i>
-                                        <span>{{ envio.hsm_template.nome|default:"Template não definido" }}</span>
-                                    </div>
-                                    <div class="hsm-info-item">
-                                        <i data-feather="settings" style="width: 14px; height: 14px;"></i>
-                                        <span>{{ envio.matrix_api_config.nome|default:"Config não definida" }}</span>
-                                    </div>
-                                    <div class="hsm-info-item">
-                                        <i data-feather="calendar" style="width: 14px; height: 14px;"></i>
-                                        <span>{{ envio.data_criacao|date:"d/m/Y H:i" }}</span>
-                                    </div>
-                                    {% if envio.data_fim_envio %}
-                                    <div class="hsm-info-item">
-                                        <i data-feather="clock" style="width: 14px; height: 14px;"></i>
-                                        <span>Finalizado às {{ envio.data_fim_envio|date:"H:i" }}</span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="hsm-card-footer">
-                                    <div class="hsm-stats-modern">
-                                        <span class="stat-item">
-                                            <i data-feather="users" style="width: 14px; height: 14px;"></i>
-                                            {{ envio.total_clientes|default:0 }} clientes
-                                        </span>
-                                        {% if envio.total_enviados > 0 %}
-                                        <span class="stat-item stat-success">
-                                            <i data-feather="check-circle" style="width: 14px; height: 14px;"></i>
-                                            {{ envio.total_enviados }} enviados
-                                        </span>
-                                        {% endif %}
-                                        {% if envio.total_erros > 0 %}
-                                        <span class="stat-item stat-error">
-                                            <i data-feather="x-circle" style="width: 14px; height: 14px;"></i>
-                                            {{ envio.total_erros }} erros
-                                        </span>
-                                        {% endif %}
-                                        {% if envio.total_pendentes > 0 %}
-                                        <span class="stat-item stat-pending">
-                                            <i data-feather="clock" style="width: 14px; height: 14px;"></i>
-                                            {{ envio.total_pendentes }} pendentes
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                    <i data-feather="chevron-right" style="width: 16px; height: 16px; color: var(--accent-success);"></i>
-                                </div>
-                            </a>
-                        {% endfor %}
-                    </div>
-                    
-                    {% if page_obj.has_other_pages %}
-                    <div class="pagination-modern">
-                        {% if page_obj.has_previous %}
-                            <a href="?page={{ page_obj.previous_page_number }}" class="btn-modern btn-modern-outline">
-                                <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
-                                Anterior
-                            </a>
-                        {% endif %}
-
-                        <div class="pagination-numbers">
-                            {% for num in page_obj.paginator.page_range %}
-                                {% if page_obj.number == num %}
-                                    <span class="btn-modern btn-modern-primary">{{ num }}</span>
-                                {% else %}
-                                    <a href="?page={{ num }}" class="btn-modern btn-modern-outline">{{ num }}</a>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-
-                        {% if page_obj.has_next %}
-                            <a href="?page={{ page_obj.next_page_number }}" class="btn-modern btn-modern-outline">
-                                Próxima
-                                <i data-feather="arrow-right" style="width: 14px; height: 14px;"></i>
-                            </a>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                {% else %}
-                    <div class="empty-state-modern">
-                        <div class="empty-icon">
-                            <i data-feather="send" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
-                        </div>
-                        <h3>Nenhum envio HSM encontrado</h3>
-                        <p>Ainda não há envios de mensagens HSM registrados no sistema.</p>
-                        <a href="{% url 'listar_execucoes' %}" class="btn-modern btn-modern-primary">
-                            <i data-feather="plus" style="width: 16px; height: 16px;"></i>
-                            Ver Execuções Disponíveis
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </main>
+            {% endif %}
+        </form>
+    </div>
 </div>
 
+<!-- Lista de Envios HSM -->
+{% if page_obj %}
+<div class="grid grid-auto">
+    {% for envio in page_obj %}
+    <div class="card">
+        <div class="card-header">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); flex: 1; min-width: 0;">
+                <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: rgba(37, 211, 102, 0.1); color: var(--color-whatsapp); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i data-feather="send" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: var(--space-xs); cursor: help;" title="{{ envio.titulo|default:'Envio HSM sem título' }}">
+                        {{ envio.titulo|default:"Envio HSM sem título" }}
+                    </div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); display: flex; align-items: center; gap: var(--space-xs);">
+                        <i data-feather="calendar" style="width: 12px; height: 12px;"></i>
+                        {{ envio.data_criacao|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+            </div>
+            <span class="badge {% if envio.status_envio == 'concluido' %}badge-success{% elif envio.status_envio == 'enviando' %}badge-info{% elif envio.status_envio == 'pausado' %}badge-warning{% elif envio.status_envio == 'erro' %}badge-danger{% elif envio.status_envio == 'cancelado' %}badge-gray{% else %}badge-gray{% endif %}">
+                {{ envio.get_status_envio_display }}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Informações do Envio -->
+            {% if envio.consulta_execucao or envio.hsm_template or envio.matrix_api_config or envio.data_fim_envio %}
+            <div style="display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md);">
+                {% if envio.consulta_execucao %}
+                <div style="display: flex; align-items: center; gap: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <i data-feather="terminal" style="width: 14px; height: 14px;"></i>
+                    <span>Execução: {{ envio.consulta_execucao.titulo|default:"Não definido" }}</span>
+                </div>
+                {% endif %}
+                {% if envio.hsm_template %}
+                <div style="display: flex; align-items: center; gap: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <i data-feather="message-circle" style="width: 14px; height: 14px;"></i>
+                    <span>Template: {{ envio.hsm_template.nome }}</span>
+                </div>
+                {% endif %}
+                {% if envio.matrix_api_config %}
+                <div style="display: flex; align-items: center; gap: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <i data-feather="settings" style="width: 14px; height: 14px;"></i>
+                    <span>Configuração: {{ envio.matrix_api_config.nome }}</span>
+                </div>
+                {% endif %}
+                {% if envio.data_fim_envio %}
+                <div style="display: flex; align-items: center; gap: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <i data-feather="clock" style="width: 14px; height: 14px;"></i>
+                    <span>Finalizado em {{ envio.data_fim_envio|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Estatísticas -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md);">
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Total</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--text-primary); line-height: 1;">
+                        {{ envio.total_clientes|default:0 }}
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Enviados</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--color-success-600); line-height: 1;">
+                        {{ envio.total_enviados|default:0 }}
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Erros</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--color-danger-600); line-height: 1;">
+                        {{ envio.total_erros|default:0 }}
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs); text-transform: uppercase;">Pendentes</div>
+                    <div style="font-size: 28px; font-weight: var(--font-weight-bold); color: var(--color-warning-600); line-height: 1;">
+                        {{ envio.total_pendentes|default:0 }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progresso -->
+            {% if envio.status_envio == 'enviando' and envio.total_clientes > 0 %}
+            <div style="margin-top: var(--space-md);">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-success" style="width: {% widthratio envio.total_enviados envio.total_clientes 100 %}%"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer">
+            <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                    <a href="/whatsapp/envios-hsm/{{ envio.id }}/" class="btn btn-sm btn-outline">
+                        <i data-feather="eye"></i>
+                        Detalhes
+                    </a>
+                    
+                    {% if envio.status_envio == 'enviando' %}
+                    <form method="post" action="/whatsapp/envios-hsm/{{ envio.id }}/pausar/" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            <i data-feather="pause"></i>
+                            Pausar
+                        </button>
+                    </form>
+                    {% elif envio.status_envio == 'pausado' %}
+                    <form method="post" action="/whatsapp/envios-hsm/{{ envio.id }}/retomar/" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success">
+                            <i data-feather="play"></i>
+                            Retomar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                
+                <div style="display: flex; gap: var(--space-sm);">
+                    {% if envio.status_envio == 'cancelado' and envio.total_pendentes > 0 %}
+                    <form method="post" action="{% url 'campanhas:reiniciar_envio_hsm' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="envio_id" value="{{ envio.id }}">
+                        <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Deseja reiniciar o envio para os {{ envio.total_pendentes }} clientes pendentes?')">
+                            <i data-feather="rotate-cw"></i>
+                            Reiniciar Pendentes ({{ envio.total_pendentes }})
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if envio.status_envio == 'enviando' or envio.status_envio == 'pausado' or envio.status_envio == 'pendente' %}
+                    <form method="post" action="/whatsapp/envios-hsm/{{ envio.id }}/cancelar/" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Deseja cancelar este envio?\n\nEnvios já realizados serão mantidos como concluídos.\nEnvios não realizados ficarão como pendentes para possível retomada.')">
+                            <i data-feather="x-circle"></i>
+                            Cancelar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<div class="pagination" style="margin-top: var(--space-xl);">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="pagination-item">
+        <i data-feather="chevrons-left" style="width: 14px; height: 14px;"></i>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="pagination-item">
+        <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i>
+    </a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <span class="pagination-item active">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?page={{ num }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="pagination-item">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="pagination-item">
+        <i data-feather="chevron-right" style="width: 14px; height: 14px;"></i>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" class="pagination-item">
+        <i data-feather="chevrons-right" style="width: 14px; height: 14px;"></i>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+    <div class="empty-state-icon">📱</div>
+    <div class="empty-state-title">Nenhum envio HSM encontrado</div>
+    <div class="empty-state-description">
+        Ainda não há envios de mensagens HSM registrados no sistema.
+    </div>
+    <a href="/whatsapp/processar-consulta/" class="btn btn-primary">
+        <i data-feather="plus"></i>
+        Criar Nova Consulta
+    </a>
+</div>
+{% endif %}
+
 <script>
-    // Atualizar status em tempo real se necessário
-    function atualizarStatus() {
-        // Verificar se há envios em andamento
-        const enviosAndamento = document.querySelectorAll('.status-enviando-modern, .status-pendente-modern');
-        if (enviosAndamento.length > 0) {
-            console.log(`Encontrados ${enviosAndamento.length} envios em andamento. Auto-refresh em 30s.`);
-            // Recarregar a página a cada 30 segundos se há envios em andamento
-            setTimeout(() => {
-                location.reload();
+    // Inicializar ícones
+    feather.replace();
+
+    // Auto-refresh para envios em andamento (a cada 30 segundos)
+    {% if page_obj %}
+        let hasActiveEnvios = false;
+        {% for envio in page_obj %}
+            {% if envio.status_envio == 'enviando' or envio.status_envio == 'pendente' %}
+                hasActiveEnvios = true;
+            {% endif %}
+        {% endfor %}
+        
+        if (hasActiveEnvios) {
+            setInterval(function() {
+                window.location.reload();
             }, 30000);
         }
-    }
-
-    // Inicializar
-    document.addEventListener('DOMContentLoaded', function() {
-        feather.replace();
-        atualizarStatus();
-    });
+    {% endif %}
 </script>
 {% endblock %}

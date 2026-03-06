@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ base.nome }} - Leads{% endblock %}
+
+{% block page_title %}📁 {{ base.nome }}{% endblock %}
+{% block page_subtitle %}Detalhes da base de leads{% endblock %}
+
+{% block content %}
+
+<!-- Informações da Base -->
+<div class="modern-card fade-in" style="margin-bottom: var(--space-lg);">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="info" style="width: 18px; height: 18px;"></i>
+            Informações da Base
+        </div>
+        <div>
+            {% if base.ativo %}
+            <span class="badge badge-success">Ativa</span>
+            {% else %}
+            <span class="badge badge-secondary">Inativa</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <div class="grid-modern grid-2">
+            <div>
+                <div style="margin-bottom: var(--space-md);">
+                    <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Arquivo Original</label>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        <i data-feather="file" style="width: 14px; height: 14px;"></i>
+                        {{ base.arquivo_original_nome }}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: var(--space-md);">
+                    <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Data de Importação</label>
+                    <div style="color: var(--text-primary);">{{ base.data_importacao|date:"d/m/Y H:i:s" }}</div>
+                </div>
+                
+                <div>
+                    <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Delimitador</label>
+                    <div style="color: var(--text-primary);">
+                        {% if base.delimitador_usado == ';' %}
+                        Ponto-vírgula (;)
+                        {% elif base.delimitador_usado == ',' %}
+                        Vírgula (,)
+                        {% elif base.delimitador_usado == '\t' %}
+                        Tab
+                        {% else %}
+                        {{ base.delimitador_usado }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <div style="margin-bottom: var(--space-md);">
+                    <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Coluna de Email</label>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        <i data-feather="mail" style="width: 14px; height: 14px; color: var(--accent-primary);"></i>
+                        {{ base.coluna_email }}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: var(--space-md);">
+                    <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Coluna de Nome</label>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        <i data-feather="user" style="width: 14px; height: 14px; color: var(--accent-success);"></i>
+                        {{ base.coluna_nome }}
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Campanhas Usando</label>
+                    <div style="color: var(--text-primary);">{{ stats.campanhas_usando }}</div>
+                </div>
+            </div>
+        </div>
+        
+        {% if base.descricao %}
+        <div style="margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--border-primary);">
+            <label style="font-size: var(--font-size-xs); color: var(--text-secondary); display: block; margin-bottom: var(--space-xs);">Descrição</label>
+            <div style="color: var(--text-primary);">{{ base.descricao }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Estatísticas -->
+<div class="grid-modern grid-4 fade-in" style="margin-bottom: var(--space-lg);">
+    <div class="stat-card stat-card-sm">
+        <div class="stat-icon" style="background: var(--accent-primary);">
+            <i data-feather="database"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_leads }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-sm">
+        <div class="stat-icon" style="background: var(--accent-success);">
+            <i data-feather="check-circle"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_validos }}</div>
+            <div class="stat-label">Válidos</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-sm">
+        <div class="stat-icon" style="background: var(--accent-danger);">
+            <i data-feather="x-circle"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_invalidos }}</div>
+            <div class="stat-label">Inválidos</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-sm">
+        <div class="stat-icon" style="background: var(--accent-info);">
+            <i data-feather="percent"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.taxa_validos|floatformat:1 }}%</div>
+            <div class="stat-label">Taxa Válidos</div>
+        </div>
+    </div>
+</div>
+
+<!-- Variáveis Disponíveis -->
+<div class="modern-card fade-in" style="margin-bottom: var(--space-lg);">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="code" style="width: 18px; height: 18px;"></i>
+            Variáveis Disponíveis para Templates
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: var(--space-sm);">
+            {% for coluna in base.colunas_disponiveis %}
+            <span style="padding: var(--space-xs) var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-sm); font-family: monospace; font-size: var(--font-size-sm); color: var(--accent-primary);">
+                &#123;&#123;{{ coluna }}&#125;&#125;
+            </span>
+            {% endfor %}
+        </div>
+        <small style="color: var(--text-secondary); display: block; margin-top: var(--space-sm);">
+            Use estas variáveis nos templates de email para personalizar as mensagens
+        </small>
+    </div>
+</div>
+
+<!-- Lista de Leads -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="users" style="width: 18px; height: 18px;"></i>
+            Leads ({{ page_obj.paginator.count }})
+        </div>
+        <div>
+            <!-- Filtros Rápidos -->
+            <div style="display: flex; gap: var(--space-xs);">
+                <a href="?valido=sim" class="btn-modern btn-modern-sm {% if valido_filter == 'sim' %}btn-modern-success{% else %}btn-modern-outline{% endif %}">
+                    Válidos
+                </a>
+                <a href="?valido=nao" class="btn-modern btn-modern-sm {% if valido_filter == 'nao' %}btn-modern-danger{% else %}btn-modern-outline{% endif %}">
+                    Inválidos
+                </a>
+                <a href="?" class="btn-modern btn-modern-sm {% if not valido_filter %}btn-modern-primary{% else %}btn-modern-outline{% endif %}">
+                    Todos
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="modern-card-body" style="padding: 0;">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: var(--bg-secondary);">
+                    <tr>
+                        <th style="padding: var(--space-sm); text-align: left; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Nome</th>
+                        <th style="padding: var(--space-sm); text-align: left; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Email</th>
+                        <th style="padding: var(--space-sm); text-align: left; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Dados Adicionais</th>
+                        <th style="padding: var(--space-sm); text-align: center; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in page_obj %}
+                    <tr style="border-bottom: 1px solid var(--border-primary);">
+                        <td style="padding: var(--space-sm); color: var(--text-primary);">
+                            <i data-feather="user" style="width: 14px; height: 14px;"></i>
+                            {{ lead.nome }}
+                        </td>
+                        <td style="padding: var(--space-sm); color: var(--text-secondary); font-size: var(--font-size-sm);">
+                            <i data-feather="mail" style="width: 14px; height: 14px;"></i>
+                            {{ lead.email }}
+                        </td>
+                        <td style="padding: var(--space-sm); font-size: var(--font-size-xs); color: var(--text-secondary);">
+                            {% if lead.dados_adicionais %}
+                                {% for chave, valor in lead.dados_adicionais.items %}
+                                <span style="margin-right: var(--space-sm);">
+                                    <strong>{{ chave }}:</strong> {{ valor|truncatechars:30 }}
+                                </span>
+                                {% endfor %}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td style="padding: var(--space-sm); text-align: center;">
+                            {% if lead.valido %}
+                            <span class="badge badge-success">Válido</span>
+                            {% else %}
+                            <span class="badge badge-danger" title="{{ lead.motivo_invalido }}">Inválido</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="padding: var(--space-lg); text-align: center; color: var(--text-secondary);">
+                            Nenhum lead encontrado
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <div style="padding: var(--space-md); border-top: 1px solid var(--border-primary); display: flex; justify-content: center; gap: var(--space-sm);">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if valido_filter %}&valido={{ valido_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Primeira</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if valido_filter %}&valido={{ valido_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Anterior</a>
+            {% endif %}
+            
+            <span style="padding: var(--space-sm); color: var(--text-secondary);">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if valido_filter %}&valido={{ valido_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Próxima</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if valido_filter %}&valido={{ valido_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Última</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Ações -->
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <a href="{% url 'emails:listar_bases_leads' %}" class="btn-modern btn-modern-outline">
+        <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+        Voltar para Bases
+    </a>
+    
+    <div style="display: flex; gap: var(--space-sm);">
+        <a href="{% url 'emails:criar_campanha' %}?base_leads={{ base.id }}" class="btn-modern btn-modern-success">
+            <i data-feather="send" style="width: 14px; height: 14px;"></i>
+            Criar Campanha com esta Base
+        </a>
+        <a href="{% url 'emails:exportar_base_leads' base.id %}" class="btn-modern btn-modern-primary">
+            <i data-feather="download" style="width: 14px; height: 14px;"></i>
+            Exportar CSV
+        </a>
+    </div>
+</div>
+
+{% endblock %}

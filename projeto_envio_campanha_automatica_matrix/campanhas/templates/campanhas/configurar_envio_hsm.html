@@ -1,1440 +1,822 @@
+{% extends 'base_saas.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurar Envio HSM | {{ execucao.titulo }}</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+{% block title %}Configurar Envio HSM - {{ execucao.titulo }}{% endblock %}
 
-    <style>
-        /*-------------------------------------------*/
-        /* ESTILOS BASE */
-        /*-------------------------------------------*/
-        :root {
-            --bg-color: #0d1117;
-            --card-bg-color: rgba(22, 27, 34, 0.75);
-            --border-color: rgba(139, 148, 158, 0.3);
-            --primary-accent-color: #33a0ff;
-            --primary-glow-color: rgba(51, 160, 255, 0.5);
-            --success-color: #28a745;
-            --success-glow-color: rgba(40, 167, 69, 0.4);
-            --error-color: #f85149;
-            --error-glow-color: rgba(248, 81, 73, 0.4);
-            --warning-color: #ffab00;
-            --warning-glow-color: rgba(255, 171, 0, 0.4);
-            --text-color: #c9d1d9;
-            --text-secondary-color: #8b949e;
-            --border-radius: 8px;
-            --font-primary: 'Poppins', sans-serif;
-            --font-mono: 'Roboto Mono', monospace;
-        }
+{% block page_title %}Configurar Envio HSM{% endblock %}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+{% block page_subtitle %}
+{{ execucao.titulo }} • {{ clientes_sucesso }} cliente{% if clientes_sucesso != 1 %}s{% endif %}
+{% endblock %}
 
-        body {
-            font-family: var(--font-primary);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px;
-            background-image: 
-                linear-gradient(rgba(139, 148, 158, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(139, 148, 158, 0.1) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
+{% block page_actions %}
+<a href="/whatsapp/execucao/{{ execucao.id }}/" class="btn btn-outline">
+    <i data-feather="arrow-left"></i>
+    Voltar
+</a>
+{% endblock %}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, var(--primary-accent-color), #58a6ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: var(--text-secondary-color);
-            font-size: 1.1rem;
-        }
-
-        .card {
-            background: var(--card-bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            padding: 30px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .card h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: var(--primary-accent-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text-color);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 16px;
-            background: rgba(13, 17, 23, 0.7);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            color: var(--text-color);
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary-accent-color);
-            box-shadow: 0 0 0 3px var(--primary-glow-color);
-        }
-
-        .info-section {
-            background: rgba(51, 160, 255, 0.1);
-            border: 1px solid rgba(51, 160, 255, 0.3);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-
-        .info-section h3 {
-            color: var(--primary-accent-color);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(139, 148, 158, 0.2);
-        }
-
-        .info-item:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            font-weight: 500;
-            color: var(--text-secondary-color);
-        }
-
-        .info-value {
-            font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .variables-section {
-            display: none;
-            background: rgba(255, 171, 0, 0.1);
-            border: 1px solid rgba(255, 171, 0, 0.3);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .variables-section.active {
-            display: block;
-        }
-
-        .variable-mapping {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            align-items: center;
-            padding: 15px;
-            background: rgba(13, 17, 23, 0.5);
-            border-radius: var(--border-radius);
-            margin-bottom: 15px;
-        }
-
-        .variable-info {
-            font-family: var(--font-mono);
-        }
-
-        .variable-name {
-            font-weight: 700;
-            color: var(--warning-color);
-        }
-
-        .variable-description {
-            color: var(--text-secondary-color);
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 24px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: 500;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            text-align: center;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-accent-color), #58a6ff);
-            color: white;
-            box-shadow: 0 4px 15px var(--primary-glow-color);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px var(--primary-glow-color);
-        }
-
-        .btn-secondary {
-            background: rgba(139, 148, 158, 0.2);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(139, 148, 158, 0.3);
-        }
-
-        .actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-            justify-content: center;
-        }
-
-        .loading {
-            display: none;
-        }
-
-        .loading.active {
-            display: inline-flex;
-        }
-
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .alert {
-            padding: 15px 20px;
-            border-radius: var(--border-radius);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-success {
-            background: rgba(40, 167, 69, 0.2);
-            border: 1px solid rgba(40, 167, 69, 0.4);
-            color: var(--success-color);
-        }
-
-        .alert-error {
-            background: rgba(248, 81, 73, 0.2);
-            border: 1px solid rgba(248, 81, 73, 0.4);
-            color: var(--error-color);
-        }
-
-        .campo-opcoes {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .campo-opcao {
-            background: rgba(13, 17, 23, 0.8);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 0.9rem;
-            color: var(--text-secondary-color);
-        }
-
-        /* Seção de contingência - inicialmente oculta */
-        #variablesSectionContingencia {
-            display: none;
-            margin-top: 20px;
-        }
-
-        #variablesSectionContingencia.active {
-            display: block;
-            animation: fadeIn 0.3s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 10px;
-            }
-            
-            .variable-mapping {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            
-            .actions {
-                flex-direction: column;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1><i data-feather="send"></i> Configurar Envio HSM</h1>
-            <p>Configure o envio de mensagens HSM via Matrix para os clientes da execução</p>
+{% block content %}
+<form method="post" id="hsmForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="execucao_id" value="{{ execucao.id }}">
+    <input type="hidden" name="titulo" value="Envio HSM - {{ execucao.titulo }}">
+    
+    <!-- Card de Resumo -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="info"></i>
+                Resumo da Execução
+            </h3>
         </div>
-
-        <!-- Informações da Execução -->
-        <div class="info-section">
-            <h3><i data-feather="database"></i> Informações da Execução</h3>
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">Título:</span>
-                    <span class="info-value">{{ execucao.titulo }}</span>
+        <div class="card-body">
+            <div class="grid grid-3" style="gap: var(--space-lg);">
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Total de Clientes</div>
+                    <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary-600);">
+                        {{ clientes_sucesso }}
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value">{{ execucao.get_status_display }}</span>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Template SQL</div>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        {{ execucao.template_sql.titulo }}
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Total de Registros:</span>
-                    <span class="info-value">{{ execucao.total_registros_sql }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">
-                        {% if execucao.pular_consulta_api %}
-                            Clientes Processados (API Pulada):
-                        {% else %}
-                            Clientes com Dados Válidos:
-                        {% endif %}
-                    </span>
-                    <span class="info-value">{{ clientes_sucesso }}</span>
-                </div>
-                {% if execucao.pular_consulta_api %}
-                <div class="info-item">
-                    <span class="info-label">Consulta na API:</span>
-                    <span class="info-value" style="color: var(--warning-color);">🔄 Pulada (apenas dados SQL)</span>
-                </div>
-                {% endif %}
-                <div class="info-item">
-                    <span class="info-label">Data de Execução:</span>
-                    <span class="info-value">{{ execucao.data_inicio|date:"d/m/Y H:i" }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Aviso sobre API Pulada -->
-        {% if execucao.pular_consulta_api %}
-        <div class="info-section" style="background: rgba(255, 171, 0, 0.15); border: 1px solid rgba(255, 171, 0, 0.4);">
-            <h3><i data-feather="alert-circle"></i> Execução com API Pulada</h3>
-            <div style="margin-bottom: 15px;">
-                <p style="color: var(--text-color); margin-bottom: 10px;">
-                    ⚠️ <strong>Esta execução foi configurada para pular a consulta na API financeira.</strong>
-                </p>
-                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning-color);">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-size: 0.9rem;">
-                        <div>
-                            <strong>✅ Dados Disponíveis:</strong><br>
-                            <span style="color: var(--text-secondary-color);">
-                                • Campos do template SQL<br>
-                                • Variáveis dinâmicas capturadas<br>
-                                • Dados básicos dos clientes
-                            </span>
-                        </div>
-                        <div>
-                            <strong>❌ Dados Indisponíveis:</strong><br>
-                            <span style="color: var(--text-secondary-color);">
-                                • Valores de fatura da API<br>
-                                • Códigos de barras da API<br>
-                                • PIX da API<br>
-                                • Links de boleto da API
-                            </span>
-                        </div>
-                        <div>
-                            <strong>📝 Recomendação:</strong><br>
-                            <span style="color: var(--text-secondary-color);">
-                                Use templates HSM que dependam apenas dos dados SQL e das variáveis dinâmicas.
-                            </span>
-                        </div>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Data de Execução</div>
+                    <div style="color: var(--text-primary); font-weight: var(--font-weight-medium);">
+                        {{ execucao.data_inicio|date:"d/m/Y H:i" }}
                     </div>
                 </div>
             </div>
-        </div>
-        {% endif %}
-
-        <!-- Informação sobre Tipos de Templates -->
-        {% if hsm_templates_pagamento %}
-        <div class="info-section" style="background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3);">
-            <h3><i data-feather="info"></i> Tipos de Templates HSM</h3>
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">📄 Templates Padrão:</span>
-                    <span class="info-value">Mensagens tradicionais (texto, variáveis simples)</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">💳 Templates de Pagamento:</span>
-                    <span class="info-value">Mensagens com botão de pagamento e dados PIX</span>
-                </div>
-            </div>
-            <p style="margin-top: 15px; color: var(--text-secondary-color); font-size: 0.9rem;">
-                💡 <strong>Dica:</strong> Para envios com função de pagamento, selecione um template do tipo "Pagamento" que campos adicionais aparecerão automaticamente para configuração do PIX e informações de pagamento.
-            </p>
-        </div>
-        {% endif %}
-
-        <!-- Variáveis Dinâmicas Disponíveis -->
-        {% if variaveis_dinamicas_info.tem_dados_dinamicos %}
-        <div class="info-section" style="background: rgba(255, 171, 0, 0.1); border: 1px solid rgba(255, 171, 0, 0.3);">
-            <h3><i data-feather="zap"></i> Variáveis Dinâmicas Disponíveis ({{ variaveis_dinamicas_info.total_variaveis_unicas }})</h3>
-            
-            <div class="info-grid" style="margin-bottom: 20px;">
-                <div class="info-item">
-                    <span class="info-label">📊 Template SQL:</span>
-                    <span class="info-value">{{ variaveis_dinamicas_info.template_sql_nome }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">🎯 Variáveis Únicas:</span>
-                    <span class="info-value">{{ variaveis_dinamicas_info.total_variaveis_unicas }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">👥 Clientes com Dados:</span>
-                    <span class="info-value">{{ variaveis_dinamicas_info.clientes_com_dinamicos }} de {{ variaveis_dinamicas_info.total_clientes_execucao }} ({{ variaveis_dinamicas_info.percentual_com_dinamicos }}%)</span>
-                </div>
-            </div>
-            
-            <!-- Lista de Variáveis com Exemplos -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
-                {% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}
-                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning-color);">
-                    <div style="display: flex; justify-content: between; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
-                        <div style="flex: 1;">
-                            <strong style="color: var(--warning-color); font-family: var(--font-mono);">{{ variavel.nome_direto }}</strong>
-                            <br>
-                            <small style="color: var(--text-secondary-color); font-family: var(--font-mono);">{{ variavel.nome_hsm }}</small>
-                        </div>
-                        <button type="button" class="btn-copy-variable" 
-                                data-variable="{{ variavel.nome_direto }}" 
-                                style="background: var(--warning-color); color: #000; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">
-                            📋 Copiar
-                        </button>
-                    </div>
-                    <div style="font-size: 0.9rem; margin-bottom: 8px;">
-                        <strong>Exemplo:</strong>
-                        {% with valor=variavel.exemplo_valor valor_str=valor|stringformat:"s" %}
-                        <span class="exemplo-valor" style="color: var(--success-color);">
-                            <span class="texto-curto" {% if valor_str|length > 100 %}style="display: inline;"{% endif %}>{{ valor_str|slice:":100" }}{% if valor_str|length > 100 %}...{% endif %}</span>
-                            {% if valor_str|length > 100 %}
-                            <span class="texto-completo" style="display: none; white-space: pre-wrap;">{{ valor_str }}</span>
-                            <button type="button" class="toggle-exemplo btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem; margin-left: 8px;">ver mais</button>
-                            {% endif %}
-                        </span>
-                        {% endwith %}
-                    </div>
-                    <div style="font-family: var(--font-mono); font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; color: var(--text-secondary-color);">
-                        {{ variavel.exemplo_uso_hsm }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            
-            <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                <h4 style="color: var(--warning-color); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                    <i data-feather="lightbulb"></i> Como Usar as Variáveis Dinâmicas
-                </h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; font-size: 0.9rem;">
-                    <div>
-                        <strong>📱 No Template HSM:</strong><br>
-                        <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; color: var(--success-color);">
-                            Olá {{nome_cliente}}!<br>
-                            Endereço: {{endereco}}<br>
-                            Email: {{email}}
-                        </code>
-                    </div>
-                    <div>
-                        <strong>🌊 No Flow:</strong><br>
-                        <span style="color: var(--text-secondary-color);">
-                            Todas as variáveis são automaticamente enviadas no <code>flow_variaveis</code>
-                        </span>
-                    </div>
-                    <div>
-                        <strong>🎯 Disponíveis:</strong><br>
-                        <span style="color: var(--text-secondary-color);">
-                            • Nome direto: <code>{{endereco}}</code><br>
-                            • Com prefixo: <code>{{dinamico_endereco}}</code>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="info-section" style="background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3);">
-            <h3><i data-feather="alert-triangle"></i> Nenhuma Variável Dinâmica Encontrada</h3>
-            <p style="color: var(--text-secondary-color); margin: 0;">
-                Esta execução não possui variáveis dinâmicas dos templates SQL. 
-                Apenas os campos padrão estarão disponíveis: nome_cliente, codigo_cliente, telefone, valor_fatura, etc.
-            </p>
-        </div>
-        {% endif %}
-
-        <!-- Formulário de Configuração -->
-        <div class="card">
-            <h2><i data-feather="settings"></i> Configuração do Envio</h2>
-            
-            <form id="hsmForm">
-                <input type="hidden" name="execucao_id" value="{{ execucao.id }}">
-                {% csrf_token %}
-                
-                <div class="form-group">
-                    <label for="titulo">Título do Envio:</label>
-                    <input type="text" id="titulo" name="titulo" required 
-                           placeholder="Ex: Envio de cobranças - Janeiro 2025">
-                </div>
-
-                <div class="form-group">
-                    <label for="matrix_config">Configuração da API Matrix:</label>
-                    <select id="matrix_config" name="matrix_config" required>
-                        <option value="">Selecione uma configuração...</option>
-                        {% for config in matrix_configs %}
-                            <option value="{{ config.id }}">{{ config.nome }} - {{ config.base_url }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="hsm_template">Template HSM Principal:</label>
-                    <select id="hsm_template" name="hsm_template" required>
-                        <option value="">Selecione um template...</option>
-                        {% if hsm_templates_padrao %}
-                            <optgroup label="📄 Templates Padrão">
-                                {% for template in hsm_templates_padrao %}
-                                    <option value="{{ template.id }}">{{ template.nome }} (ID: {{ template.hsm_id }})</option>
-                                {% endfor %}
-                            </optgroup>
-                        {% endif %}
-                        {% if hsm_templates_pagamento %}
-                            <optgroup label="💳 Templates de Pagamento">
-                                {% for template in hsm_templates_pagamento %}
-                                    <option value="{{ template.id }}">{{ template.nome }} (ID: {{ template.hsm_id }})</option>
-                                {% endfor %}
-                            </optgroup>
-                        {% endif %}
-                    </select>
-                    <small style="color: var(--text-secondary-color); margin-top: 5px; display: block;">
-                        Template usado quando todas as variáveis estão preenchidas
-                    </small>
-                </div>
-
-                <div class="form-group">
-                    <label for="hsm_template_contingencia">Template HSM de Contingência (Opcional):</label>
-                    <select id="hsm_template_contingencia" name="hsm_template_contingencia">
-                        <option value="">Selecione um template alternativo...</option>
-                        {% if hsm_templates_padrao %}
-                            <optgroup label="📄 Templates Padrão">
-                                {% for template in hsm_templates_padrao %}
-                                    <option value="{{ template.id }}">{{ template.nome }} (ID: {{ template.hsm_id }})</option>
-                                {% endfor %}
-                            </optgroup>
-                        {% endif %}
-                        {% if hsm_templates_pagamento %}
-                            <optgroup label="💳 Templates de Pagamento">
-                                {% for template in hsm_templates_pagamento %}
-                                    <option value="{{ template.id }}">{{ template.nome }} (ID: {{ template.hsm_id }})</option>
-                                {% endfor %}
-                            </optgroup>
-                        {% endif %}
-                    </select>
-                    <small style="color: var(--text-secondary-color); margin-top: 5px; display: block;">
-                        Template usado quando alguma variável do principal estiver vazia ou PIX estiver vazio em templates de pagamento
-                    </small>
-                    <div style="background: rgba(51, 160, 255, 0.1); border: 1px solid rgba(51, 160, 255, 0.3); border-radius: 4px; padding: 10px; margin-top: 8px;">
-                        <strong>💡 Automatização de Contingência:</strong>
-                        <ul style="margin: 8px 0 0 20px; color: var(--text-secondary-color); font-size: 0.9rem;">
-                            <li>Se o template principal for de <strong>pagamento</strong> e o PIX estiver vazio, automaticamente usará o template de contingência</li>
-                            <li>Se alguma variável obrigatória estiver vazia, também usará a contingência</li>
-                            <li>Útil para enviar mensagem sem PIX quando os dados não estão disponíveis</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Seção de Campos de Pagamento (aparece apenas para templates de pagamento) -->
-                <div id="paymentSection" style="display: none;" class="card" style="background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3); margin-top: 20px;">
-                    <h3 style="color: var(--success-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i data-feather="credit-card"></i> Configurações de Pagamento
-                    </h3>
-                    
-                    {% if configuracoes_pagamento %}
-                    <div class="form-group" style="background: rgba(51, 160, 255, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <label for="configuracao_pagamento_hsm">
-                            <strong>Usar Configuração de Pagamento Salva:</strong>
-                        </label>
-                        <select id="configuracao_pagamento_hsm" name="configuracao_pagamento_hsm" style="margin-top: 10px;">
-                            <option value="">-- Configurar manualmente --</option>
-                            {% for config in configuracoes_pagamento %}
-                                <option value="{{ config.id }}" 
-                                        data-razao-social="{{ config.razao_social_empresa }}"
-                                        data-cnpj="{{ config.cnpj_empresa }}"
-                                        data-nome-produto="{{ config.nome_produto_padrao }}"
-                                        data-tipo-produto="{{ config.tipo_produto }}"
-                                        data-val-imposto="{{ config.val_imposto }}"
-                                        data-val-desconto="{{ config.val_desconto }}">
-                                    {{ config.nome }} - {{ config.razao_social_empresa }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <small style="color: var(--text-secondary-color); margin-top: 5px; display: block;">
-                            Selecione uma configuração salva para preencher automaticamente os campos abaixo
-                        </small>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="form-group">
-                        <label for="razao_social_empresa">Razão Social da Empresa: <span style="color: var(--error-color);">*</span></label>
-                        <input type="text" id="razao_social_empresa" name="razao_social_empresa" 
-                               placeholder="Ex: EMPRESA EXEMPLO LTDA">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="cnpj_empresa">CNPJ da Empresa (apenas números): <span style="color: var(--error-color);">*</span></label>
-                        <input type="text" id="cnpj_empresa" name="cnpj_empresa" 
-                               placeholder="Ex: 12345678000199" maxlength="14">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="nome_produto_padrao">Nome do Produto Padrão: <span style="color: var(--error-color);">*</span></label>
-                        <input type="text" id="nome_produto_padrao" name="nome_produto_padrao" 
-                               placeholder="Ex: Fatura Mensal" value="Fatura">
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div class="form-group">
-                            <label for="val_imposto">Valor do Imposto (opcional):</label>
-                            <input type="number" id="val_imposto" name="val_imposto" step="0.01" min="0" 
-                                   placeholder="Ex: 5.50">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="val_desconto">Valor do Desconto (opcional):</label>
-                            <input type="number" id="val_desconto" name="val_desconto" step="0.01" min="0" 
-                                   placeholder="Ex: 10.00">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="tipo_produto">Tipo de Produto (opcional):</label>
-                        <select id="tipo_produto" name="tipo_produto">
-                            <option value="">Selecione...</option>
-                            <option value="digital-goods">Bens Digitais</option>
-                            <option value="physical-goods">Bens Físicos</option>
-                            <option value="services">Serviços</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Seção do Segundo HSM (Envio Duplo) -->
-                <div class="card" style="background: rgba(51, 160, 255, 0.1); border: 1px solid rgba(51, 160, 255, 0.3); margin-top: 20px;">
-                    <h3 style="color: var(--primary-accent-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i data-feather="repeat"></i> Configuração de Segundo HSM (Envio Duplo)
-                    </h3>
-                    
-                    <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" id="habilitar_segundo_hsm" name="habilitar_segundo_hsm" value="true">
-                            <span>Habilitar envio de segundo HSM</span>
-                        </label>
-                        <small style="color: var(--text-secondary-color); margin-top: 5px; display: block;">
-                            Ativa o envio sequencial de dois HSMs para cada cliente
-                        </small>
-                    </div>
-
-                    <div id="segundoHsmSection" style="display: none;">
-                        <div class="form-group">
-                            <label for="hsm_template_segundo">Template HSM Segundo:</label>
-                            <select id="hsm_template_segundo" name="hsm_template_segundo">
-                                <option value="">Selecione um template...</option>
-                                {% if hsm_templates_padrao %}
-                                    <optgroup label="📄 Templates Padrão">
-                                        {% for template in hsm_templates_padrao %}
-                                            <option value="{{ template.id }}">{{ template.nome }} (ID: {{ template.hsm_id }})</option>
-                                        {% endfor %}
-                                    </optgroup>
-                                {% endif %}
-                                {% if hsm_templates_pagamento %}
-                                    <optgroup label="💳 Templates de Pagamento">
-                                        {% for template in hsm_templates_pagamento %}
-                                            <option value="{{ template.id }}">{{ template.nome }} (ID: {{ template.hsm_id }})</option>
-                                        {% endfor %}
-                                    </optgroup>
-                                {% endif %}
-                            </select>
-                            <small style="color: var(--text-secondary-color); margin-top: 5px; display: block;">
-                                Template que será enviado como segundo HSM
-                            </small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="intervalo_segundo_hsm">Intervalo antes do segundo HSM (segundos):</label>
-                            <input type="number" id="intervalo_segundo_hsm" name="intervalo_segundo_hsm" 
-                                   value="3" min="1" max="60" 
-                                   placeholder="Ex: 3">
-                            <small style="color: var(--text-secondary-color); margin-top: 5px; display: block;">
-                                Tempo de espera entre o primeiro e segundo HSM
-                            </small>
-                        </div>
-
-                        <!-- Seção de Campos de Pagamento para o Segundo HSM -->
-                        <div id="paymentSectionSegundo" style="display: none;" class="card" style="background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3); margin-top: 20px;">
-                            <h4 style="color: var(--success-color); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                                <i data-feather="credit-card"></i> Configurações de Pagamento - Segundo HSM
-                            </h4>
-                            
-                            <div class="form-group">
-                                <label for="razao_social_empresa_segundo">Razão Social da Empresa (Segundo HSM):</label>
-                                <input type="text" id="razao_social_empresa_segundo" name="razao_social_empresa_segundo" 
-                                       placeholder="Ex: EMPRESA EXEMPLO LTDA (deixe vazio para usar a do primeiro HSM)">
-                            </div>
-
-                            <div class="form-group">
-                                <label for="cnpj_empresa_segundo">CNPJ da Empresa (Segundo HSM):</label>
-                                <input type="text" id="cnpj_empresa_segundo" name="cnpj_empresa_segundo" 
-                                       placeholder="Ex: 12345678000199 (deixe vazio para usar o do primeiro HSM)" maxlength="14">
-                            </div>
-
-                            <div class="form-group">
-                                <label for="nome_produto_padrao_segundo">Nome do Produto Padrão (Segundo HSM):</label>
-                                <input type="text" id="nome_produto_padrao_segundo" name="nome_produto_padrao_segundo" 
-                                       placeholder="Ex: Lembrete de Fatura (deixe vazio para usar o do primeiro HSM)">
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                <div class="form-group">
-                                    <label for="val_imposto_segundo">Valor do Imposto (Segundo HSM):</label>
-                                    <input type="number" id="val_imposto_segundo" name="val_imposto_segundo" step="0.01" min="0" 
-                                           placeholder="Ex: 5.50">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="val_desconto_segundo">Valor do Desconto (Segundo HSM):</label>
-                                    <input type="number" id="val_desconto_segundo" name="val_desconto_segundo" step="0.01" min="0" 
-                                           placeholder="Ex: 10.00">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="tipo_produto_segundo">Tipo de Produto (Segundo HSM):</label>
-                                <select id="tipo_produto_segundo" name="tipo_produto_segundo">
-                                    <option value="">Selecione...</option>
-                                    <option value="digital-goods">Bens Digitais</option>
-                                    <option value="physical-goods">Bens Físicos</option>
-                                    <option value="services">Serviços</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Seção de Mapeamento de Variáveis -->
-                <div id="variablesSection" class="variables-section">
-                    <h3><i data-feather="link"></i> Mapeamento de Variáveis</h3>
-                    <p style="margin-bottom: 20px; color: var(--text-secondary-color);">
-                        Configure como os dados dos clientes serão mapeados para as variáveis do template HSM:
-                    </p>
-                    
-                    <!-- Campos disponíveis dos clientes -->
-                    <div style="margin-bottom: 20px;">
-                        <h4 style="color: var(--primary-accent-color); margin-bottom: 10px;">Campos Disponíveis dos Clientes:</h4>
-                        
-                        <!-- Campos Fixos -->
-                        <div style="margin-bottom: 15px;">
-                            <h5 style="color: var(--secondary-color); margin-bottom: 8px; font-size: 0.9rem;">📋 Campos Fixos:</h5>
-                            <div class="campo-opcoes">
-                                <div class="campo-opcao">nome_cliente - Nome do cliente</div>
-                                <div class="campo-opcao">codigo_cliente - Código do cliente</div>
-                                <div class="campo-opcao">telefone - Telefone do cliente</div>
-                                <div class="campo-opcao">valor_fatura - Valor da fatura</div>
-                                <div class="campo-opcao">vencimento_fatura - Data de vencimento</div>
-                                <div class="campo-opcao">codigo_barras - Código de barras</div>
-                                <div class="campo-opcao">pix_copia_cola - PIX copia e cola</div>
-                                <div class="campo-opcao">link_boleto - Link do boleto</div>
-                                <div class="campo-opcao">id_fatura - ID da fatura</div>
-                            </div>
-                        </div>
-
-                        <!-- Campos Dinâmicos -->
-                        {% if variaveis_dinamicas_info.tem_dados_dinamicos %}
-                        <div style="margin-bottom: 15px;">
-                            <h5 style="color: var(--primary-accent-color); margin-bottom: 8px; font-size: 0.9rem;">🎯 Campos Dinâmicos (do SQL):</h5>
-                            <div class="campo-opcoes">
-                                {% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}
-                                <div class="campo-opcao campo-dinamico" style="background: rgba(76, 175, 80, 0.1); border-left: 3px solid var(--success-color);">
-                                    <strong>{{ variavel.nome_direto }}</strong>
-                                    {% with valor=variavel.exemplo_valor valor_str=valor|stringformat:"s" %}
-                                    - <span class="exemplo-valor" style="color: inherit;">
-                                        <span class="texto-curto" {% if valor_str|length > 100 %}style="display: inline;"{% endif %}>{{ valor_str|slice:":100" }}{% if valor_str|length > 100 %}...{% endif %}</span>
-                                        {% if valor_str|length > 100 %}
-                                        <span class="texto-completo" style="display: none; white-space: pre-wrap;">{{ valor_str }}</span>
-                                        <button type="button" class="toggle-exemplo btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem; margin-left: 8px;">ver mais</button>
-                                        {% endif %}
-                                    </span>
-                                    {% endwith %}
-                                    <span style="color: #666; font-size: 0.8rem; margin-left: 8px;">(SQL)</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <div style="margin-top: 8px; padding: 8px; background: rgba(76, 175, 80, 0.1); border-radius: 4px; font-size: 0.8rem; color: #4CAF50;">
-                                <i data-feather="info" style="width: 14px; height: 14px; margin-right: 4px;"></i>
-                                <strong>{{ variaveis_dinamicas_info.total_variaveis }}</strong> variáveis dinâmicas disponíveis desta execução SQL
-                            </div>
-                        </div>
-                        {% else %}
-                        <div style="margin-bottom: 15px;">
-                            <h5 style="color: #999; margin-bottom: 8px; font-size: 0.9rem;">🎯 Campos Dinâmicos:</h5>
-                            <div style="padding: 12px; background: rgba(153, 153, 153, 0.1); border-radius: 4px; color: #666; font-size: 0.85rem;">
-                                <i data-feather="info" style="width: 14px; height: 14px; margin-right: 4px;"></i>
-                                Nenhuma variável dinâmica encontrada nesta execução. As variáveis dinâmicas são criadas automaticamente quando seu template SQL retorna colunas além dos campos padrão do cliente.
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div id="variableMappings">
-                        <!-- Mapeamentos serão inseridos aqui via JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Seção de Mapeamento de Variáveis de Contingência -->
-                <div id="variablesSectionContingencia" class="variables-section" style="background: rgba(255, 171, 0, 0.1); border: 1px solid rgba(255, 171, 0, 0.3);">
-                    <h3><i data-feather="shield"></i> Mapeamento de Variáveis - Template Contingência</h3>
-                    <p style="margin-bottom: 20px; color: var(--text-secondary-color);">
-                        Configure como os dados dos clientes serão mapeados para as variáveis do template HSM de contingência:
-                    </p>
-                    
-                    <div id="variableMappingsContingencia">
-                        <!-- Mapeamentos de contingência serão inseridos aqui via JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Seção de Mapeamento de Variáveis do Segundo HSM -->
-                <div id="variablesSectionSegundo" class="variables-section" style="background: rgba(51, 160, 255, 0.1); border: 1px solid rgba(51, 160, 255, 0.3); display: none;">
-                    <h3><i data-feather="repeat"></i> Mapeamento de Variáveis - Segundo HSM</h3>
-                    <p style="margin-bottom: 20px; color: var(--text-secondary-color);">
-                        Configure como os dados dos clientes serão mapeados para as variáveis do segundo template HSM:
-                    </p>
-                    
-                    <div id="variableMappingsSegundo">
-                        <!-- Mapeamentos do segundo HSM serão inseridos aqui via JavaScript -->
-                    </div>
-                </div>
-
-                <div class="actions">
-                    <a href="{% url 'detalhe_execucao' execucao.id %}" class="btn btn-secondary">
-                        <i data-feather="arrow-left"></i> Voltar
-                    </a>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <span class="loading" id="loadingSpinner">
-                            <div class="spinner"></div>
-                        </span>
-                        <i data-feather="send" id="sendIcon"></i>
-                        Iniciar Envio HSM
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
-    <script>
-        // Inicializa os ícones Feather
-        feather.replace();
+    <!-- Configuração da API Matrix -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="settings"></i>
+                Configuração da API Matrix
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="matrix_config" class="form-label form-label-required">API Matrix</label>
+                <select name="matrix_config" id="matrix_config" class="form-select" required>
+                    <option value="">Selecione uma API...</option>
+                    {% for api in matrix_configs %}
+                    <option value="{{ api.id }}">{{ api.nome }}</option>
+                    {% endfor %}
+                </select>
+                <span class="form-help">
+                    Selecione a configuração de API Matrix que será utilizada para enviar as mensagens HSM
+                </span>
+            </div>
+        </div>
+    </div>
 
-        // Toggle ver mais/ver menos para conteúdos longos (100+ chars)
-        document.addEventListener('click', function(e) {
-            const btn = e.target.closest('.toggle-exemplo');
-            if (!btn) return;
-            const container = btn.closest('.exemplo-valor');
-            if (!container) return;
+    <!-- Templates HSM -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="message-square"></i>
+                Templates HSM
+            </h3>
+        </div>
+        <div class="card-body">
+            <!-- Template Principal -->
+            <div class="form-group">
+                <label for="hsm_template" class="form-label form-label-required">Template HSM Principal</label>
+                <select name="hsm_template" id="hsm_template" class="form-select" required onchange="loadTemplateVariables()">
+                    <option value="">Selecione um template...</option>
+                    <optgroup label="📋 HSM Padrão">
+                        {% for template in hsm_templates %}
+                        {% if template.tipo_template == 'padrao' %}
+                        <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}" data-tipo="padrao">
+                            {{ template.nome }} - ID: {{ template.hsm_id }} ({{ template.variaveis|length }} variáveis)
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="💳 HSM Pagamento">
+                        {% for template in hsm_templates %}
+                        {% if template.tipo_template == 'pagamento' %}
+                        <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}" data-tipo="pagamento">
+                            {{ template.nome }} - ID: {{ template.hsm_id }} ({{ template.variaveis|length }} variáveis)
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
 
-            const curto = container.querySelector('.texto-curto');
-            const completo = container.querySelector('.texto-completo');
-            const isExpandindo = completo && completo.style.display === 'none';
+            <!-- Configuração de Pagamento (aparece apenas quando HSM de pagamento for selecionado) -->
+            <div id="config_pagamento_section" style="display: none;">
+                <div class="form-group">
+                    <label for="configuracao_pagamento_hsm" class="form-label form-label-required">Configuração de Pagamento</label>
+                    <select name="configuracao_pagamento_hsm" id="configuracao_pagamento_hsm" class="form-select">
+                        <option value="">Selecione uma configuração...</option>
+                        {% for config in configuracoes_pagamento %}
+                        <option value="{{ config.id }}">
+                            {{ config.nome }} - {{ config.razao_social_empresa }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <span class="form-help">
+                        Configuração com dados da empresa para PIX e boleto
+                    </span>
+                </div>
+            </div>
 
-            if (curto && completo) {
-                if (isExpandindo) {
-                    curto.style.display = 'none';
-                    completo.style.display = 'inline';
-                    btn.textContent = 'ver menos';
-                } else {
-                    completo.style.display = 'none';
-                    curto.style.display = 'inline';
-                    btn.textContent = 'ver mais';
-                }
+            <!-- Template de Contingência -->
+            <div class="form-group">
+                <label for="hsm_template_contingencia" class="form-label">Template HSM Contingência (Opcional)</label>
+                <select name="hsm_template_contingencia" id="hsm_template_contingencia" class="form-select" onchange="loadTemplateVariablesContingencia()">
+                    <option value="">Nenhum (sem contingência)</option>
+                    <optgroup label="📋 HSM Padrão">
+                        {% for template in hsm_templates %}
+                        {% if template.tipo_template == 'padrao' %}
+                        <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}" data-tipo="padrao">
+                            {{ template.nome }} - ID: {{ template.hsm_id }} ({{ template.variaveis|length }} variáveis)
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="💳 HSM Pagamento">
+                        {% for template in hsm_templates %}
+                        {% if template.tipo_template == 'pagamento' %}
+                        <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}" data-tipo="pagamento">
+                            {{ template.nome }} - ID: {{ template.hsm_id }} ({{ template.variaveis|length }} variáveis)
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+                <span class="form-help">
+                    Template usado quando o envio do template principal falhar
+                </span>
+            </div>
+
+            <!-- Segundo HSM (Opcional) -->
+            <div class="form-group">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                    <input type="checkbox" id="habilitar_segundo_hsm" name="habilitar_segundo_hsm" onchange="toggleSegundoHSM()">
+                    <label for="habilitar_segundo_hsm" style="margin: 0; cursor: pointer;">Enviar um segundo HSM após o primeiro</label>
+                </div>
+            </div>
+
+            <div id="segundo_hsm_section" style="display: none; padding: var(--space-lg); background: var(--surface-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+                <div class="form-group">
+                    <label for="hsm_template_segundo" class="form-label">Template do Segundo HSM</label>
+                    <select name="hsm_template_segundo" id="hsm_template_segundo" class="form-select" onchange="loadTemplateVariablesSegundo()">
+                        <option value="">Selecione um template...</option>
+                        <optgroup label="📋 HSM Padrão">
+                            {% for template in hsm_templates %}
+                            {% if template.tipo_template == 'padrao' %}
+                            <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}" data-tipo="padrao">
+                                {{ template.nome }} - ID: {{ template.hsm_id }} ({{ template.variaveis|length }} variáveis)
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="💳 HSM Pagamento">
+                            {% for template in hsm_templates %}
+                            {% if template.tipo_template == 'pagamento' %}
+                            <option value="{{ template.id }}" data-variaveis="{{ template.variaveis_json }}" data-tipo="pagamento">
+                                {{ template.nome }} - ID: {{ template.hsm_id }} ({{ template.variaveis|length }} variáveis)
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="intervalo_segundo_hsm" class="form-label">Intervalo (minutos)</label>
+                    <input type="number" name="intervalo_segundo_hsm" id="intervalo_segundo_hsm" class="form-input" min="1" value="5">
+                    <span class="form-help">
+                        Tempo de espera entre o primeiro e o segundo HSM
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuração de Mídia -->
+    <div class="card" style="margin-bottom: var(--space-xl); border-left: 3px solid var(--color-success-600);">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3 class="card-title" style="color: white;">
+                <i data-feather="paperclip"></i>
+                📎 Enviar Mídia com HSM (Opcional)
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); padding: var(--space-md); background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: var(--radius-md); border: 2px solid rgba(102, 126, 234, 0.3);">
+                    <input type="checkbox" id="enviar_com_midia" name="enviar_com_midia" onchange="toggleMidiaFields()">
+                    <label for="enviar_com_midia" style="margin: 0; cursor: pointer; font-weight: var(--font-weight-semibold); font-size: var(--font-size-base);">
+                        ✅ Enviar imagem/arquivo junto com o HSM
+                    </label>
+                </div>
+                <span class="form-help">
+                    Marque para incluir uma mídia (imagem, PDF, documento) que será enviada junto com a mensagem HSM usando o campo <code>url_file</code> da API Matrix.
+                </span>
+            </div>
+
+            <div id="midia_fields_section" style="display: none; padding: var(--space-lg); background: var(--surface-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+                
+                <!-- Escolha do tipo de mídia -->
+                <div class="form-group" style="margin-bottom: var(--space-lg);">
+                    <label style="font-weight: var(--font-weight-semibold); margin-bottom: var(--space-sm);">Como deseja fornecer a mídia?</label>
+                    <div style="display: flex; gap: var(--space-md); margin-top: var(--space-sm);">
+                        <label style="display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-md); border: 2px solid var(--border-primary); border-radius: var(--radius-md); cursor: pointer; flex: 1; transition: all 0.2s;" id="label_opcao_upload">
+                            <input type="radio" name="tipo_midia" value="upload" onchange="toggleTipoMidia('upload')" checked>
+                            <span>
+                                <strong>📁 Upload de Arquivo</strong><br>
+                                <small style="color: var(--text-tertiary);">Enviar do seu computador</small>
+                            </span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-md); border: 2px solid var(--border-primary); border-radius: var(--radius-md); cursor: pointer; flex: 1; transition: all 0.2s;" id="label_opcao_url">
+                            <input type="radio" name="tipo_midia" value="url" onchange="toggleTipoMidia('url')">
+                            <span>
+                                <strong>🔗 URL Externa</strong><br>
+                                <small style="color: var(--text-tertiary);">Link de arquivo já hospedado</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Campo de Upload -->
+                <div id="campo_upload" class="form-group" style="padding: var(--space-lg); background: linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(139, 195, 74, 0.05) 100%); border-radius: var(--radius-md); border: 2px dashed var(--color-success-500);">
+                    <label for="arquivo_midia" class="form-label">
+                        <i data-feather="upload"></i>
+                        Arquivo de Mídia
+                    </label>
+                    <input type="file" name="arquivo_midia" id="arquivo_midia" class="form-control" accept="image/*,.pdf,.doc,.docx" onchange="previewArquivo(this)">
+                    <span class="form-help">
+                        📁 Formatos suportados: Imagens (JPG, PNG, GIF), PDF, Documentos. Máximo 10MB.
+                    </span>
+                    <div id="preview_arquivo" style="margin-top: var(--space-md); display: none;">
+                        <!-- Preview será inserido aqui -->
+                    </div>
+                </div>
+
+                <!-- Campo de URL -->
+                <div id="campo_url" class="form-group" style="display: none; padding: var(--space-lg); background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(3, 169, 244, 0.05) 100%); border-radius: var(--radius-md); border: 2px dashed var(--color-primary-500);">
+                    <label for="url_midia" class="form-label">
+                        <i data-feather="link"></i>
+                        URL da Mídia
+                    </label>
+                    <input type="url" name="url_midia" id="url_midia" class="form-control" placeholder="https://exemplo.com/imagem.jpg" oninput="previewUrl(this.value)">
+                    <span class="form-help">
+                        🔗 Cole a URL completa do arquivo hospedado externamente. A URL deve ser acessível publicamente.
+                    </span>
+                    <div id="preview_url" style="margin-top: var(--space-md); display: none;">
+                        <!-- Preview será inserido aqui -->
+                    </div>
+                </div>
+
+                <!-- Informação de prioridade -->
+                <div style="margin-top: var(--space-md); padding: var(--space-md); background: var(--color-warning-50); border-left: 4px solid var(--color-warning-500); border-radius: var(--radius-sm);">
+                    <div style="display: flex; align-items: start; gap: var(--space-sm);">
+                        <i data-feather="info" style="color: var(--color-warning-600); flex-shrink: 0; width: 20px; height: 20px;"></i>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-warning-800);">
+                            <strong>💡 Dica:</strong> Se você preencher ambos os campos, o arquivo enviado terá prioridade sobre a URL externa.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapeamento de Variáveis - Principal -->
+    <div id="variablesSection" class="card" style="margin-bottom: var(--space-xl); display: none;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="link"></i>
+                Mapeamento de Variáveis - Template Principal
+            </h3>
+        </div>
+        <div class="card-body">
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--surface-secondary); border-radius: var(--radius-md);">
+                <h4 style="color: var(--text-primary); margin-bottom: var(--space-sm); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);">
+                    <i data-feather="database" style="width: 16px; height: 16px;"></i>
+                    Campos Disponíveis dos Clientes
+                </h4>
+                
+                <!-- Campos Fixos -->
+                <div style="margin-bottom: var(--space-md);">
+                    <h5 style="color: var(--text-tertiary); margin-bottom: var(--space-xs); font-size: var(--font-size-xs);">Campos Padrão:</h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
+                        <span class="badge badge-info">nome_cliente</span>
+                        <span class="badge badge-info">codigo_cliente</span>
+                        <span class="badge badge-info">telefone</span>
+                        <span class="badge badge-info">valor_fatura</span>
+                        <span class="badge badge-info">vencimento_fatura</span>
+                        <span class="badge badge-info">codigo_barras</span>
+                        <span class="badge badge-info">pix_copia_cola</span>
+                        <span class="badge badge-info">link_boleto</span>
+                        <span class="badge badge-info">id_fatura</span>
+                    </div>
+                </div>
+
+                <!-- Campos Dinâmicos -->
+                {% if variaveis_dinamicas_info.tem_dados_dinamicos %}
+                <div>
+                    <h5 style="color: var(--color-success-600); margin-bottom: var(--space-xs); font-size: var(--font-size-xs);">
+                        <i data-feather="zap" style="width: 14px; height: 14px;"></i>
+                        Campos Dinâmicos (do SQL):
+                    </h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
+                        {% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}
+                        <span class="badge badge-success">{{ variavel.nome_direto }}</span>
+                        {% endfor %}
+                    </div>
+                    <div style="margin-top: var(--space-sm); font-size: var(--font-size-xs); color: var(--color-success-600);">
+                        <i data-feather="info" style="width: 14px; height: 14px;"></i>
+                        {{ variaveis_dinamicas_info.total_variaveis }} variáveis dinâmicas disponíveis
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div id="variableMappings">
+                <!-- Mapeamentos serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapeamento de Variáveis - Contingência -->
+    <div id="variablesSectionContingencia" class="card" style="margin-bottom: var(--space-xl); display: none; border-left: 3px solid var(--color-warning-600);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="shield"></i>
+                Mapeamento de Variáveis - Template Contingência
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="variableMappingsContingencia">
+                <!-- Mapeamentos de contingência serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapeamento de Variáveis - Segundo HSM -->
+    <div id="variablesSectionSegundo" class="card" style="margin-bottom: var(--space-xl); display: none; border-left: 3px solid var(--color-primary-600);">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-feather="repeat"></i>
+                Mapeamento de Variáveis - Segundo HSM
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="variableMappingsSegundo">
+                <!-- Mapeamentos do segundo HSM serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div style="display: flex; gap: var(--space-md); justify-content: flex-end; padding-top: var(--space-lg); border-top: 1px solid var(--border-primary);">
+        <a href="/whatsapp/execucao/{{ execucao.id }}/" class="btn btn-outline">
+            <i data-feather="x"></i>
+            Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+            <span class="loading" id="loadingSpinner" style="display: none;">
+                <div class="spinner"></div>
+            </span>
+            <i data-feather="send" id="sendIcon"></i>
+            <span id="btnText">Iniciar Envio HSM</span>
+        </button>
+    </div>
+</form>
+
+<style>
+.spinner {
+    display: inline-block;
+    border: 2px solid var(--color-gray-200);
+    border-top: 2px solid var(--color-primary-600);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+    margin-right: var(--space-xs);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.variable-mapping {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+}
+
+.variable-mapping:hover {
+    border-color: var(--color-primary-600);
+    background: var(--surface-tertiary);
+}
+
+.variable-name {
+    flex: 0 0 200px;
+    font-family: var(--font-family-mono);
+    color: var(--color-primary-600);
+    font-weight: var(--font-weight-semibold);
+}
+
+.variable-arrow {
+    flex: 0 0 auto;
+    color: var(--text-tertiary);
+}
+
+.variable-field {
+    flex: 1;
+}
+</style>
+
+<script>
+feather.replace();
+
+// Campos disponíveis
+const camposDisponiveis = [
+    { value: 'nome_cliente', label: 'Nome do Cliente' },
+    { value: 'codigo_cliente', label: 'Código do Cliente' },
+    { value: 'telefone', label: 'Telefone' },
+    { value: 'valor_fatura', label: 'Valor da Fatura' },
+    { value: 'vencimento_fatura', label: 'Vencimento da Fatura' },
+    { value: 'codigo_barras', label: 'Código de Barras' },
+    { value: 'pix_copia_cola', label: 'PIX Copia e Cola' },
+    { value: 'link_boleto', label: 'Link do Boleto' },
+    { value: 'id_fatura', label: 'ID da Fatura' },
+    {% if variaveis_dinamicas_info.tem_dados_dinamicos %}
+    {% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}
+    { value: '{{ variavel.nome_direto }}', label: '{{ variavel.nome_direto }} (Dinâmico)' },
+    {% endfor %}
+    {% endif %}
+];
+
+function toggleSegundoHSM() {
+    const checkbox = document.getElementById('habilitar_segundo_hsm');
+    const section = document.getElementById('segundo_hsm_section');
+    const select = document.getElementById('hsm_template_segundo');
+    const intervalo = document.getElementById('intervalo_segundo_hsm');
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+        select.required = true;
+        intervalo.required = true;
+    } else {
+        section.style.display = 'none';
+        select.required = false;
+        intervalo.required = false;
+        select.value = '';
+        document.getElementById('variablesSectionSegundo').style.display = 'none';
+    }
+}
+
+function loadTemplateVariables() {
+    const select = document.getElementById('hsm_template');
+    const section = document.getElementById('variablesSection');
+    const container = document.getElementById('variableMappings');
+    const configPagamentoSection = document.getElementById('config_pagamento_section');
+    const configPagamentoSelect = document.getElementById('configuracao_pagamento_hsm');
+    
+    if (!select.value) {
+        section.style.display = 'none';
+        configPagamentoSection.style.display = 'none';
+        configPagamentoSelect.removeAttribute('required');
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const variaveisObj = JSON.parse(option.getAttribute('data-variaveis') || '{}');
+    const tipoTemplate = option.getAttribute('data-tipo');
+    
+    // Mostra/oculta seção de configuração de pagamento
+    if (tipoTemplate === 'pagamento') {
+        configPagamentoSection.style.display = 'block';
+        configPagamentoSelect.setAttribute('required', 'required');
+    } else {
+        configPagamentoSection.style.display = 'none';
+        configPagamentoSelect.removeAttribute('required');
+        configPagamentoSelect.value = '';
+    }
+    
+    container.innerHTML = '';
+    
+    // Agora variaveis é um objeto {numero: descricao}
+    Object.entries(variaveisObj).forEach(([numero, descricao]) => {
+        const div = document.createElement('div');
+        div.className = 'variable-mapping';
+        div.innerHTML = `
+            <div class="variable-name">\{\{${numero}\}\} - ${descricao}</div>
+            <div class="variable-arrow"><i data-feather="arrow-right"></i></div>
+            <div class="variable-field">
+                <select name="var_mapping_${numero}" class="form-select" required>
+                    <option value="">Selecione o campo...</option>
+                    ${camposDisponiveis.map(campo => 
+                        `<option value="${campo.value}">${campo.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    section.style.display = 'block';
+    feather.replace();
+}
+
+function loadTemplateVariablesContingencia() {
+    const select = document.getElementById('hsm_template_contingencia');
+    const section = document.getElementById('variablesSectionContingencia');
+    const container = document.getElementById('variableMappingsContingencia');
+    
+    if (!select.value) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const variaveisObj = JSON.parse(option.getAttribute('data-variaveis') || '{}');
+    
+    container.innerHTML = '';
+    
+    // Agora variaveis é um objeto {numero: descricao}
+    Object.entries(variaveisObj).forEach(([numero, descricao]) => {
+        const div = document.createElement('div');
+        div.className = 'variable-mapping';
+        div.innerHTML = `
+            <div class="variable-name">\{\{${numero}\}\} - ${descricao}</div>
+            <div class="variable-arrow"><i data-feather="arrow-right"></i></div>
+            <div class="variable-field">
+                <select name="var_mapping_contingencia_${numero}" class="form-select" required>
+                    <option value="">Selecione o campo...</option>
+                    ${camposDisponiveis.map(campo => 
+                        `<option value="${campo.value}">${campo.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    section.style.display = 'block';
+    feather.replace();
+}
+
+function loadTemplateVariablesSegundo() {
+    const select = document.getElementById('hsm_template_segundo');
+    const section = document.getElementById('variablesSectionSegundo');
+    const container = document.getElementById('variableMappingsSegundo');
+    
+    if (!select.value) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const variaveisObj = JSON.parse(option.getAttribute('data-variaveis') || '{}');
+    
+    container.innerHTML = '';
+    
+    // Agora variaveis é um objeto {numero: descricao}
+    Object.entries(variaveisObj).forEach(([numero, descricao]) => {
+        const div = document.createElement('div');
+        div.className = 'variable-mapping';
+        div.innerHTML = `
+            <div class="variable-name">\{\{${numero}\}\} - ${descricao}</div>
+            <div class="variable-arrow"><i data-feather="arrow-right"></i></div>
+            <div class="variable-field">
+                <select name="var_mapping_segundo_${numero}" class="form-select" required>
+                    <option value="">Selecione o campo...</option>
+                    ${camposDisponiveis.map(campo => 
+                        `<option value="${campo.value}">${campo.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    section.style.display = 'block';
+    feather.replace();
+}
+
+// Submit do formulário
+document.getElementById('hsmForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const sendIcon = document.getElementById('sendIcon');
+    const btnText = document.getElementById('btnText');
+    
+    // Mostra loading
+    submitBtn.disabled = true;
+    loadingSpinner.style.display = 'inline-block';
+    sendIcon.style.display = 'none';
+    btnText.textContent = 'Processando...';
+    
+    try {
+        const formData = new FormData(this);
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
             }
         });
-
-        // Manipulador do formulário
-        document.getElementById('hsmForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const sendIcon = document.getElementById('sendIcon');
-            
-            // Mostra loading
-            submitBtn.disabled = true;
-            loadingSpinner.classList.add('active');
-            sendIcon.style.display = 'none';
-            
-            try {
-                const formData = new FormData(this);
-                const response = await fetch('{% url "iniciar_envio_hsm" %}', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
-                });
-                
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    // Redireciona para a página de detalhes do envio
-                    window.location.href = result.redirect_url;
-                } else {
-                    showAlert('error', result.message);
-                }
-                
-            } catch (error) {
-                showAlert('error', 'Erro ao processar solicitação: ' + error.message);
-            } finally {
-                // Esconde loading
-                submitBtn.disabled = false;
-                loadingSpinner.classList.remove('active');
-                sendIcon.style.display = 'inline';
-            }
-        });
-
-        // Manipulador de mudança do template HSM
-        document.getElementById('hsm_template').addEventListener('change', async function() {
-            const templateId = this.value;
-            const variablesSection = document.getElementById('variablesSection');
-            const variableMappings = document.getElementById('variableMappings');
-            const paymentSection = document.getElementById('paymentSection');
-            
-            if (!templateId) {
-                variablesSection.classList.remove('active');
-                paymentSection.style.display = 'none';
-                return;
-            }
-            
-            // Verifica se é template de pagamento baseado no optgroup
-            const selectedOption = this.options[this.selectedIndex];
-            const optgroup = selectedOption.parentElement;
-            const isPaymentTemplate = optgroup && optgroup.label && optgroup.label.includes('💳');
-            
-            // Mostra/esconde seção de pagamento
-            if (isPaymentTemplate) {
-                paymentSection.style.display = 'block';
-                paymentSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                
-                // Torna os campos obrigatórios
-                document.getElementById('razao_social_empresa').required = true;
-                document.getElementById('cnpj_empresa').required = true;
-                document.getElementById('nome_produto_padrao').required = true;
-            } else {
-                paymentSection.style.display = 'none';
-                
-                // Remove obrigatoriedade dos campos
-                document.getElementById('razao_social_empresa').required = false;
-                document.getElementById('cnpj_empresa').required = false;
-                document.getElementById('nome_produto_padrao').required = false;
-            }
-            
-            try {
-                const response = await fetch('/hsm-template/' + templateId + '/variaveis/');
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    // Limpa mapeamentos anteriores
-                    variableMappings.innerHTML = '';
-                    
-                    // Se o template tem variáveis, mostra a seção
-                    if (Object.keys(result.variaveis).length > 0) {
-                        variablesSection.classList.add('active');
-                        
-                        // Cria campos de mapeamento para cada variável
-                        for (const [varId, varDesc] of Object.entries(result.variaveis)) {
-                            const mappingDiv = document.createElement('div');
-                            mappingDiv.className = 'variable-mapping';
-                            mappingDiv.innerHTML = 
-                                '<div class="variable-info">' +
-                                    '<div class="variable-name">{{' + varId + '}}</div>' +
-                                    '<div class="variable-description">' + varDesc + '</div>' +
-                                '</div>' +
-                                '<div class="form-group" style="margin: 0;">' +
-                                    '<select name="var_mapping_' + varId + '" required>' +
-                                        gerarOpcoesVariaveis() +
-                                    '</select>' +
-                                '</div>';
-                            variableMappings.appendChild(mappingDiv);
-                        }
-                    } else {
-                        variablesSection.classList.remove('active');
-                    }
-                } else {
-                    showAlert('error', result.message);
-                }
-                
-            } catch (error) {
-                showAlert('error', 'Erro ao carregar variáveis do template: ' + error.message);
-            }
-        });
-
-        // Manipulador de mudança do template HSM de contingência
-        document.getElementById('hsm_template_contingencia').addEventListener('change', async function() {
-            const templateId = this.value;
-            const variablesSectionContingencia = document.getElementById('variablesSectionContingencia');
-            const variableMappingsContingencia = document.getElementById('variableMappingsContingencia');
-            
-            if (!templateId) {
-                variablesSectionContingencia.classList.remove('active');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/hsm-template/' + templateId + '/variaveis/');
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    // Limpa mapeamentos anteriores
-                    variableMappingsContingencia.innerHTML = '';
-                    
-                    // Se o template tem variáveis, mostra a seção
-                    if (Object.keys(result.variaveis).length > 0) {
-                        variablesSectionContingencia.classList.add('active');
-                        
-                        // Cria campos de mapeamento para cada variável
-                        for (const [varId, varDesc] of Object.entries(result.variaveis)) {
-                            const mappingDiv = document.createElement('div');
-                            mappingDiv.className = 'variable-mapping';
-                            mappingDiv.innerHTML = 
-                                '<div class="variable-info">' +
-                                    '<div class="variable-name">{{' + varId + '}}</div>' +
-                                    '<div class="variable-description">' + varDesc + '</div>' +
-                                '</div>' +
-                                '<div class="form-group" style="margin: 0;">' +
-                                    '<select name="var_mapping_contingencia_' + varId + '" required>' +
-                                        gerarOpcoesVariaveis() +
-                                    '</select>' +
-                                '</div>';
-                            variableMappingsContingencia.appendChild(mappingDiv);
-                        }
-                    } else {
-                        variablesSectionContingencia.classList.remove('active');
-                    }
-                } else {
-                    showAlert('error', result.message);
-                }
-                
-            } catch (error) {
-                showAlert('error', 'Erro ao carregar variáveis do template de contingência: ' + error.message);
-            }
-        });
-
-        // ========= LÓGICA DO SEGUNDO HSM =========
         
-        // Manipulador do checkbox de habilitar segundo HSM
-        document.getElementById('habilitar_segundo_hsm').addEventListener('change', function() {
-            const segundoHsmSection = document.getElementById('segundoHsmSection');
-            const variablesSectionSegundo = document.getElementById('variablesSectionSegundo');
-            
-            if (this.checked) {
-                segundoHsmSection.style.display = 'block';
-            } else {
-                segundoHsmSection.style.display = 'none';
-                variablesSectionSegundo.style.display = 'none';
-                // Limpa o template selecionado
-                document.getElementById('hsm_template_segundo').value = '';
-            }
-        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            window.location.href = data.redirect_url || '/whatsapp/execucao/{{ execucao.id }}/';
+        } else {
+            alert('Erro: ' + data.message);
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = 'none';
+            sendIcon.style.display = 'inline';
+            btnText.textContent = 'Iniciar Envio HSM';
+        }
+    } catch (error) {
+        alert('Erro ao processar requisição: ' + error.message);
+        submitBtn.disabled = false;
+        loadingSpinner.style.display = 'none';
+        sendIcon.style.display = 'inline';
+        btnText.textContent = 'Iniciar Envio HSM';
+    }
+});
 
-        // Manipulador de mudança do segundo template HSM
-        document.getElementById('hsm_template_segundo').addEventListener('change', async function() {
-            const templateId = this.value;
-            const variablesSectionSegundo = document.getElementById('variablesSectionSegundo');
-            const variableMappingsSegundo = document.getElementById('variableMappingsSegundo');
-            const paymentSectionSegundo = document.getElementById('paymentSectionSegundo');
-            
-            if (!templateId) {
-                variablesSectionSegundo.style.display = 'none';
-                paymentSectionSegundo.style.display = 'none';
-                return;
-            }
-            
-            try {
-                const response = await fetch('/hsm-template/' + templateId + '/variaveis/');
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    // Verifica se é template de pagamento
-                    if (result.tipo_envio && (result.hsm_id || '').toString().includes('pagament')) {
-                        paymentSectionSegundo.style.display = 'block';
-                    } else {
-                        paymentSectionSegundo.style.display = 'none';
-                    }
-                    
-                    // Limpa mapeamentos anteriores
-                    variableMappingsSegundo.innerHTML = '';
-                    
-                    // Se o template tem variáveis, mostra a seção
-                    if (Object.keys(result.variaveis).length > 0) {
-                        variablesSectionSegundo.style.display = 'block';
-                        
-                        // Cria campos de mapeamento para cada variável
-                        for (const [varId, varDesc] of Object.entries(result.variaveis)) {
-                            const mappingDiv = document.createElement('div');
-                            mappingDiv.className = 'variable-mapping';
-                            mappingDiv.innerHTML = 
-                                '<div class="variable-info">' +
-                                    '<div class="variable-name">{{' + varId + '}} - SEGUNDO HSM</div>' +
-                                    '<div class="variable-description">' + varDesc + '</div>' +
-                                '</div>' +
-                                '<div class="form-group" style="margin: 0;">' +
-                                    '<select name="var_mapping_segundo_' + varId + '" required>' +
-                                        gerarOpcoesVariaveis() +
-                                    '</select>' +
-                                '</div>';
-                            variableMappingsSegundo.appendChild(mappingDiv);
-                        }
-                    } else {
-                        variablesSectionSegundo.style.display = 'none';
-                    }
-                } else {
-                    showAlert('error', result.message);
-                }
-                
-            } catch (error) {
-                showAlert('error', 'Erro ao carregar variáveis do segundo template: ' + error.message);
-            }
-        });
+// ============================================
+// FUNÇÕES PARA CONFIGURAÇÃO DE MÍDIA
+// ============================================
 
-        // Validação de CNPJ do segundo HSM - apenas números
-        document.getElementById('cnpj_empresa_segundo').addEventListener('input', function() {
-            this.value = this.value.replace(/\D/g, '');
-        });
+function toggleMidiaFields() {
+    const checkbox = document.getElementById('enviar_com_midia');
+    const section = document.getElementById('midia_fields_section');
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+    } else {
+        section.style.display = 'none';
+        document.getElementById('arquivo_midia').value = '';
+        document.getElementById('url_midia').value = '';
+        document.getElementById('preview_arquivo').style.display = 'none';
+        document.getElementById('preview_url').style.display = 'none';
+    }
+    feather.replace();
+}
 
-        // Função para mostrar alertas
-        function showAlert(type, message) {
-            // Remove alertas existentes
-            const existingAlerts = document.querySelectorAll('.alert');
-            existingAlerts.forEach(alert => alert.remove());
-            
-            // Cria novo alerta
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-' + type;
-            alert.innerHTML = 
-                '<i data-feather="' + (type === 'success' ? 'check-circle' : 'alert-circle') + '"></i>' +
-                message;
-            
-            // Insere no início do container
-            const container = document.querySelector('.container');
-            container.insertBefore(alert, container.firstChild);
-            
-            // Remove após 5 segundos
-            setTimeout(() => {
-                alert.remove();
-            }, 5000);
-            
-            // Atualiza ícones
+function toggleTipoMidia(tipo) {
+    const campoUpload = document.getElementById('campo_upload');
+    const campoUrl = document.getElementById('campo_url');
+    const labelUpload = document.getElementById('label_opcao_upload');
+    const labelUrl = document.getElementById('label_opcao_url');
+    
+    if (tipo === 'upload') {
+        campoUpload.style.display = 'block';
+        campoUrl.style.display = 'none';
+        labelUpload.style.borderColor = 'var(--color-success-500)';
+        labelUpload.style.background = 'rgba(76, 175, 80, 0.1)';
+        labelUrl.style.borderColor = 'var(--border-primary)';
+        labelUrl.style.background = 'transparent';
+        document.getElementById('url_midia').value = '';
+        document.getElementById('preview_url').style.display = 'none';
+    } else {
+        campoUpload.style.display = 'none';
+        campoUrl.style.display = 'block';
+        labelUrl.style.borderColor = 'var(--color-primary-500)';
+        labelUrl.style.background = 'rgba(33, 150, 243, 0.1)';
+        labelUpload.style.borderColor = 'var(--border-primary)';
+        labelUpload.style.background = 'transparent';
+        document.getElementById('arquivo_midia').value = '';
+        document.getElementById('preview_arquivo').style.display = 'none';
+    }
+    feather.replace();
+}
+
+function previewArquivo(input) {
+    const preview = document.getElementById('preview_arquivo');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileName = file.name;
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        const fileType = file.type;
+        
+        let previewHTML = `
+            <div style="padding: var(--space-md); background: white; border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                    <i data-feather="file" style="color: var(--color-success-600);"></i>
+                    <div style="flex: 1;">
+                        <strong style="color: var(--text-primary);">${fileName}</strong><br>
+                        <small style="color: var(--text-tertiary);">${fileSize} MB</small>
+                    </div>
+                    <span class="badge badge-success">Selecionado</span>
+                </div>
+        `;
+        
+        if (fileType.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewHTML += `
+                    <img src="${e.target.result}" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); margin-top: var(--space-sm);">
+                `;
+                previewHTML += `</div>`;
+                preview.innerHTML = previewHTML;
+                preview.style.display = 'block';
+                feather.replace();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewHTML += `</div>`;
+            preview.innerHTML = previewHTML;
+            preview.style.display = 'block';
             feather.replace();
         }
-        
-        // Validação de CNPJ - apenas números
-        document.getElementById('cnpj_empresa').addEventListener('input', function() {
-            this.value = this.value.replace(/\D/g, '');
-        });
-        
-        // Manipulador para configuração de pagamento salva
-        const configuracaoPagamentoSelect = document.getElementById('configuracao_pagamento_hsm');
-        if (configuracaoPagamentoSelect) {
-            configuracaoPagamentoSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                
-                if (this.value) {
-                    // Preenche os campos com os dados da configuração selecionada
-                    document.getElementById('razao_social_empresa').value = selectedOption.dataset.razaoSocial || '';
-                    document.getElementById('cnpj_empresa').value = selectedOption.dataset.cnpj || '';
-                    document.getElementById('nome_produto_padrao').value = selectedOption.dataset.nomeProduto || '';
-                    
-                    const tipoSelect = document.getElementById('tipo_produto');
-                    if (tipoSelect) {
-                        tipoSelect.value = selectedOption.dataset.tipoProduto || '';
-                    }
-                    
-                    const valImpostoInput = document.getElementById('val_imposto');
-                    if (valImpostoInput) {
-                        valImpostoInput.value = selectedOption.dataset.valImposto || '0';
-                    }
-                    
-                    const valDescontoInput = document.getElementById('val_desconto');
-                    if (valDescontoInput) {
-                        valDescontoInput.value = selectedOption.dataset.valDesconto || '0';
-                    }
-                    
-                    // Desabilita campos quando usar configuração salva
-                    document.getElementById('razao_social_empresa').readOnly = true;
-                    document.getElementById('cnpj_empresa').readOnly = true;
-                    document.getElementById('nome_produto_padrao').readOnly = true;
-                    
-                    // Muda a cor de fundo para indicar que está usando configuração salva
-                    document.getElementById('razao_social_empresa').style.backgroundColor = 'rgba(51, 160, 255, 0.1)';
-                    document.getElementById('cnpj_empresa').style.backgroundColor = 'rgba(51, 160, 255, 0.1)';
-                    document.getElementById('nome_produto_padrao').style.backgroundColor = 'rgba(51, 160, 255, 0.1)';
-                } else {
-                    // Limpa os campos e habilita edição manual
-                    document.getElementById('razao_social_empresa').value = '';
-                    document.getElementById('cnpj_empresa').value = '';
-                    document.getElementById('nome_produto_padrao').value = 'Fatura';
-                    
-                    document.getElementById('razao_social_empresa').readOnly = false;
-                    document.getElementById('cnpj_empresa').readOnly = false;
-                    document.getElementById('nome_produto_padrao').readOnly = false;
-                    
-                    document.getElementById('razao_social_empresa').style.backgroundColor = '';
-                    document.getElementById('cnpj_empresa').style.backgroundColor = '';
-                    document.getElementById('nome_produto_padrao').style.backgroundColor = '';
-                }
-            });
-        }
-        
-        // NOVO: Opções dinâmicas renderizadas pelo Django, encapsuladas em string para evitar erros de lint
-        const dynamicOptions = `{% if variaveis_dinamicas_info.tem_dados_dinamicos %}<optgroup label="🎯 Variáveis Dinâmicas">{% for variavel in variaveis_dinamicas_info.variaveis_hsm_disponiveis %}<option value="{{ variavel.nome_direto }}">{{ variavel.nome_direto|title }} (dinâmico)</option>{% endfor %}</optgroup>{% endif %}`;
+    }
+}
 
-        // NOVO: Função para gerar opções de mapeamento incluindo variáveis dinâmicas
-        function gerarOpcoesVariaveis() {
-            let options = '<option value="">Selecione um campo...</option>' +
-                         '<option value="nome_cliente">Nome do Cliente</option>' +
-                         '<option value="codigo_cliente">Código do Cliente</option>' +
-                         '<option value="telefone">Telefone</option>' +
-                         '<option value="valor_fatura">Valor da Fatura</option>' +
-                         '<option value="vencimento_fatura">Data de Vencimento</option>' +
-                         '<option value="codigo_barras">Código de Barras</option>' +
-                         '<option value="pix_copia_cola">PIX Copia e Cola</option>' +
-                         '<option value="link_boleto">Link do Boleto</option>' +
-                         '<option value="id_fatura">ID da Fatura</option>';
-            
-            // Adiciona variáveis dinâmicas renderizadas
-            options += dynamicOptions;
-            
-            return options;
-        }
+function previewUrl(url) {
+    const preview = document.getElementById('preview_url');
+    
+    if (!url) {
+        preview.style.display = 'none';
+        return;
+    }
+    
+    try {
+        new URL(url);
+    } catch (e) {
+        preview.innerHTML = `
+            <div style="padding: var(--space-md); background: var(--color-warning-50); border-radius: var(--radius-md); border: 1px solid var(--color-warning-500);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-feather="alert-triangle" style="color: var(--color-warning-600);"></i>
+                    <span style="color: var(--color-warning-800); font-size: var(--font-size-sm);">
+                        URL inválida. Certifique-se de incluir https://
+                    </span>
+                </div>
+            </div>
+        `;
+        preview.style.display = 'block';
+        feather.replace();
+        return;
+    }
+    
+    const extension = url.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
+    
+    let previewHTML = `
+        <div style="padding: var(--space-md); background: white; border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                <i data-feather="link" style="color: var(--color-primary-600);"></i>
+                <div style="flex: 1;">
+                    <strong style="color: var(--text-primary);">URL Externa</strong><br>
+                    <small style="color: var(--text-tertiary); word-break: break-all;">${url}</small>
+                </div>
+                <span class="badge badge-primary">Válida</span>
+            </div>
+    `;
+    
+    if (isImage) {
+        previewHTML += `
+            <img src="${url}" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); margin-top: var(--space-sm);" 
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="display: none; padding: var(--space-sm); background: var(--color-warning-50); border-radius: var(--radius-sm); margin-top: var(--space-sm);">
+                <small style="color: var(--color-warning-800);">⚠️ Não foi possível carregar preview da imagem</small>
+            </div>
+        `;
+    }
+    
+    previewHTML += `</div>`;
+    preview.innerHTML = previewHTML;
+    preview.style.display = 'block';
+    feather.replace();
+}
 
-        // NOVO: Funcionalidade para copiar variáveis dinâmicas
-        document.addEventListener('DOMContentLoaded', function() {
-            // Adiciona event listeners para todos os botões de copiar variáveis
-            document.querySelectorAll('.btn-copy-variable').forEach(button => {
-                button.addEventListener('click', function() {
-                    const variableName = this.getAttribute('data-variable');
-                    const variableFormatted = '{{' + variableName + '}}';
-                    
-                    // Tenta copiar para a área de transferência
-                    if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(variableFormatted).then(() => {
-                            // Feedback visual
-                            const originalText = this.innerHTML;
-                            this.innerHTML = '✅ Copiado!';
-                            this.style.background = 'var(--success-color)';
-                            this.style.color = '#fff';
-                            
-                            setTimeout(() => {
-                                this.innerHTML = originalText;
-                                this.style.background = 'var(--warning-color)';
-                                this.style.color = '#000';
-                            }, 2000);
-                            
-                            // Mostra notificação
-                            showVariableCopyAlert('success', 'Variável ' + variableFormatted + ' copiada para a área de transferência!');
-                        }).catch(err => {
-                            console.error('Erro ao copiar:', err);
-                            fallbackCopyToClipboard(variableFormatted, this);
-                        });
-                    } else {
-                        // Fallback para navegadores mais antigos
-                        fallbackCopyToClipboard(variableFormatted, this);
-                    }
-                });
-            });
-            
-            // Função de fallback para copiar
-            function fallbackCopyToClipboard(text, button) {
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                textArea.style.top = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                
-                try {
-                    document.execCommand('copy');
-                    const originalText = button.innerHTML;
-                    button.innerHTML = '✅ Copiado!';
-                    button.style.background = 'var(--success-color)';
-                    button.style.color = '#fff';
-                    
-                    setTimeout(() => {
-                        button.innerHTML = originalText;
-                        button.style.background = 'var(--warning-color)';
-                        button.style.color = '#000';
-                    }, 2000);
-                    
-                    showVariableCopyAlert('success', 'Variável ' + text + ' copiada!');
-                } catch (err) {
-                    console.error('Fallback copy failed:', err);
-                    showVariableCopyAlert('error', 'Não foi possível copiar a variável. Copie manualmente: ' + text);
-                }
-                
-                document.body.removeChild(textArea);
-            }
-            
-            // Função para mostrar alertas específicos das variáveis
-            function showVariableCopyAlert(type, message) {
-                // Remove alertas existentes de variáveis
-                const existingAlerts = document.querySelectorAll('.variable-copy-alert');
-                existingAlerts.forEach(alert => alert.remove());
-                
-                // Cria novo alerta
-                const alert = document.createElement('div');
-                alert.className = 'variable-copy-alert';
-                alert.style.cssText = 
-                    'position: fixed;' +
-                    'top: 20px;' +
-                    'right: 20px;' +
-                    'background: ' + (type === 'success' ? 'var(--success-color)' : 'var(--error-color)') + ';' +
-                    'color: white;' +
-                    'padding: 12px 20px;' +
-                    'border-radius: 8px;' +
-                    'box-shadow: 0 4px 20px rgba(0,0,0,0.3);' +
-                    'z-index: 10000;' +
-                    'font-family: var(--font-primary);' +
-                    'font-size: 0.9rem;' +
-                    'max-width: 350px;' +
-                    'animation: slideInFromRight 0.3s ease-out;';
-                
-                alert.innerHTML = 
-                    '<div style="display: flex; align-items: center; gap: 10px;">' +
-                        '<i data-feather="' + (type === 'success' ? 'check-circle' : 'alert-circle') + '" style="width: 20px; height: 20px;"></i>' +
-                        '<span>' + message + '</span>' +
-                    '</div>';
-                
-                document.body.appendChild(alert);
-                feather.replace();
-                
-                // Remove após 4 segundos
-                setTimeout(() => {
-                    if (alert && alert.parentNode) {
-                        alert.style.animation = 'slideOutToRight 0.3s ease-out';
-                        setTimeout(() => {
-                            if (alert && alert.parentNode) {
-                                alert.remove();
-                            }
-                        }, 300);
-                    }
-                }, 4000);
-            }
-            
-            // Adiciona animações CSS
-            if (!document.querySelector('#variable-animations')) {
-                const style = document.createElement('style');
-                style.id = 'variable-animations';
-                style.textContent = `
-                    @keyframes slideInFromRight {
-                        from {
-                            transform: translateX(100%);
-                            opacity: 0;
-                        }
-                        to {
-                            transform: translateX(0);
-                            opacity: 1;
-                        }
-                    }
-                    
-                    @keyframes slideOutToRight {
-                        from {
-                            transform: translateX(0);
-                            opacity: 1;
-                        }
-                        to {
-                            transform: translateX(100%);
-                            opacity: 0;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        });
-    </script>
-</body>
-</html>
+</script>
+{% endblock %}

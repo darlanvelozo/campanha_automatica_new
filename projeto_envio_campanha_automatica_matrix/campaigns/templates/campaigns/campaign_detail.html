@@ -5,10 +5,10 @@
 {% block page_title %}{{ campaign.name }}{% endblock %}
 
 {% block page_actions %}
-<a href="{% url 'campaign_list' %}" class="btn btn-secondary btn-sm">← Voltar</a>
+<a href="{% url 'native:campaign_list' %}" class="btn btn-secondary btn-sm">← Voltar</a>
 {% if campaign.enabled %}
 {% if not campaign.has_running_execution %}
-<form method="post" action="{% url 'execute_campaign' campaign.id %}" style="display: inline;">
+<form method="post" action="{% url 'native:execute_campaign' campaign.id %}" style="display: inline;">
     {% csrf_token %}
     <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Executar campanha {{ campaign.name }}?')">▶ Executar</button>
 </form>
@@ -148,7 +148,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'execution_detail' execution.id %}" class="btn btn-secondary">Ver Logs</a>
+                        <a href="{% url 'native:execution_detail' execution.id %}" class="btn btn-secondary">Ver Logs</a>
                     </td>
                 </tr>
                 {% endfor %}

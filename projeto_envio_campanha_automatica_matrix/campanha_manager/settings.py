@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +21,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-z2r1356f=+co1=c@*55%*08rzl=@63y4cg%f=l8jzkb9-zb@i3'
+# Em produção, use variável de ambiente: export DJANGO_SECRET_KEY='sua-chave-secreta-aqui'
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-z2r1356f=+co1=c@*55%*08rzl=@63y4cg%f=l8jzkb9-zb@i3'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True  # Ativado para desenvolvimento local
+# Em produção, use: export DJANGO_DEBUG=False
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["*"]
+# ALLOWED_HOSTS - configure com os domínios/IPs permitidos
+# Em produção, use: export DJANGO_ALLOWED_HOSTS='dominio1.com,dominio2.com,ip'
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -39,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',  # Para autenticação por token
+    'campanha_manager',  # App principal para gerenciamento
     'campanhas',
     'emails',
     'campaigns',
@@ -52,6 +61,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'campanha_manager.middleware.LoginRequiredMiddleware',  # Middleware para exigir login
+    'campanhas.middleware_api_log.APILogMiddleware',  # Middleware para logging de API
 ]
 
 ROOT_URLCONF = 'campanha_manager.urls'
@@ -59,7 +70,7 @@ ROOT_URLCONF = 'campanha_manager.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'campanha_manager' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -79,8 +90,12 @@ WSGI_APPLICATION = 'campanha_manager.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'db_campanha_automatica_novo',
+        'USER': 'admin',
+        'PASSWORD': 'qualidade@trunks.57',
+        'HOST': '187.62.153.52',
+        'PORT': '5432',
     }
 }
 
@@ -122,6 +137,19 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Diretórios adicionais onde o Django procura arquivos estáticos
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# Media files (uploads de usuários)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# URL base do site (necessário para converter URLs relativas em absolutas)
+# Configure com o domínio real em produção
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8086')
+
 # Configurações para lidar com grandes volumes de dados
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Aumenta o limite de campos (padrão é 1000)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB (padrão é 2.5MB)
@@ -140,7 +168,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Temporário para teste
+        'rest_framework.permissions.AllowAny',  # APIs liberadas por enquanto (tokens serão implementados depois)
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -161,3 +189,175 @@ NATIVE_API_PASSWORD = 'THi5$CFQw!U6afU#vR'  # Configure com a senha da API Nativ
 
 # API de Campanhas
 CAMPAIGN_API_BASE_URL = 'https://campanha.megalinkpiaui.com.br/api'  # Configure com a URL base da API de Campanhas
+
+# =======================
+# CONFIGURAÇÕES DE SEGURANÇA PARA PRODUÇÃO
+# =======================
+
+if not DEBUG:
+    # HTTPS/SSL
+    SECURE_SSL_REDIRECT = True  # Redireciona HTTP para HTTPS
+    SESSION_COOKIE_SECURE = True  # Cookie de sessão apenas via HTTPS
+    CSRF_COOKIE_SECURE = True  # Cookie CSRF apenas via HTTPS
+    
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 ano
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Proteção contra clickjacking
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # Proteção XSS
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    
+    # Proxy reverso (se usar Nginx)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Outras configurações de segurança
+    SECURE_REFERRER_POLICY = 'same-origin'
+    
+# =======================
+# CONFIGURAÇÕES DE LOGGING
+# =======================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '[{levelname}] {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django_errors.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'filters': ['require_debug_false'],
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['error_file', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'campanhas': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'emails': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'campaigns': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+}
+
+# Cria diretório de logs se não existir
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# =======================
+# CONFIGURAÇÕES DE CACHE (OPCIONAL)
+# =======================
+
+# Cache em memória para desenvolvimento
+if DEBUG:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+else:
+    # Em produção, considere usar Redis ou Memcached
+    # CACHES = {
+    #     'default': {
+    #         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+    #         'LOCATION': 'redis://127.0.0.1:6379/1',
+    #     }
+    # }
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
+
+# =======================
+# CONFIGURAÇÕES DE EMAIL (OPCIONAL)
+# =======================
+
+# Configure para receber emails de erro em produção
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+# EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+# EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+# EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+# EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+# DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+# SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Lista de administradores (recebem emails de erro)
+# ADMINS = [
+#     ('Admin Name', 'admin@example.com'),
+# ]
+# MANAGERS = ADMINS
+
+# =======================
+# CONFIGURAÇÕES DE AUTENTICAÇÃO
+# =======================
+
+# URL para redirecionar usuários não autenticados
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/'  # Para onde redirecionar após login bem-sucedido
+LOGOUT_REDIRECT_URL = '/admin/login/'  # Para onde redirecionar após logout

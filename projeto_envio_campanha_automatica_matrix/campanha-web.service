@@ -1,0 +1,68 @@
+[Unit]
+Description=Campanha Manager Django Web Application
+Documentation=https://docs.djangoproject.com/
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=darlan
+Group=darlan
+
+# Diretório de trabalho (onde está o manage.py)
+WorkingDirectory=/home/darlan/projetos_django/novo_envio_campanha_automatica/campanha_automatica_new/projeto_envio_campanha_automatica_matrix
+
+# Variáveis de ambiente
+Environment="DJANGO_SETTINGS_MODULE=campanha_manager.settings"
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONPATH=/home/darlan/projetos_django/novo_envio_campanha_automatica/campanha_automatica_new/projeto_envio_campanha_automatica_matrix"
+
+# Variáveis de ambiente para produção (sobrescreve DEBUG e SECRET_KEY)
+# IMPORTANTE: Gere uma nova SECRET_KEY em produção usando:
+# python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+Environment="DJANGO_DEBUG=False"
+Environment="DJANGO_SECRET_KEY=*#ts9hkxe!_%3&y#@3iywxik-q!4y^+#3o)=9hwy23cb3^g(-z"
+Environment="DJANGO_ALLOWED_HOSTS=campanha.megalinkpiaui.com.br,localhost,127.0.0.1"
+
+# Comando para executar o Gunicorn
+ExecStart=/home/darlan/projetos_django/novo_envio_campanha_automatica/campanha_automatica_new/projeto_envio_campanha_automatica_matrix/myenv/bin/gunicorn \
+    --config /home/darlan/projetos_django/novo_envio_campanha_automatica/campanha_automatica_new/projeto_envio_campanha_automatica_matrix/gunicorn_config.py \
+    campanha_manager.wsgi:application
+
+# Recarregar graciosamente
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Diretório para arquivos temporários
+RuntimeDirectory=gunicorn
+RuntimeDirectoryMode=755
+
+# Permissões de segurança
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Política de reinício
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=200s
+StartLimitBurst=5
+
+# Timeout para inicialização
+TimeoutStartSec=60s
+TimeoutStopSec=30s
+
+# Limites de recursos (ajuste conforme necessário)
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=campanha-web
+
+# Melhorias de segurança (descomente se necessário)
+# ProtectSystem=full
+# ProtectHome=true
+# ReadWritePaths=/var/log/gunicorn
+
+[Install]
+WantedBy=multi-user.target

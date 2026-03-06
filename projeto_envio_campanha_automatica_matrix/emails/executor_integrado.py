@@ -10,7 +10,7 @@ from django.db import transaction
 from io import StringIO
 from campanhas.views import executar_consulta_sql
 from campanhas.models import ConsultaExecucao, ClienteConsultado
-from .models import CampanhaEmail, EnvioEmailIndividual, LogEnvioEmail
+from .models import CampanhaEmail, EnvioEmailIndividual, LogEnvioEmail, Lead
 from .servico_simplificado import ServicoEmailSimplificado
 
 logger = logging.getLogger(__name__)
@@ -71,9 +71,15 @@ class ExecutorCampanhaIntegrado:
     
     def _obter_dados_clientes_integrado(self):
         """
-        Obtém dados dos clientes seguindo o padrão do sistema existente
+        Obtém dados dos clientes ou leads seguindo o padrão do sistema existente
         """
         try:
+            # Verificar tipo de fonte
+            if self.campanha.tipo_fonte == 'leads':
+                # CENÁRIO: Usar leads de CSV
+                return self._obter_dados_leads()
+            
+            # Comportamento original para clientes
             if self.campanha.consulta_execucao:
                 # CENÁRIO 1: Reutilizar ConsultaExecucao existente
                 return self._obter_dados_de_execucao_existente()
@@ -88,6 +94,37 @@ class ExecutorCampanhaIntegrado:
                 
         except Exception as e:
             self.log("ERROR", "Erro ao obter dados", str(e))
+            return []
+    
+    def _obter_dados_leads(self):
+        """
+        Obtém dados dos leads importados via CSV
+        """
+        try:
+            if not self.campanha.base_leads:
+                self.log("ERROR", "Base de leads não definida", "Campanha configurada para leads mas sem base_leads")
+                return []
+            
+            base_leads = self.campanha.base_leads
+            self.log("INFO", "Obtendo dados de leads", f"Base: {base_leads.nome}")
+            
+            # Buscar leads válidos
+            leads = Lead.objects.filter(
+                base_leads=base_leads,
+                valido=True
+            )
+            
+            dados_leads = []
+            for lead in leads:
+                # Obter dados completos do lead
+                dados = lead.get_dados_completos()
+                dados_leads.append(dados)
+            
+            self.log("INFO", "Dados de leads obtidos", f"{len(dados_leads)} leads válidos")
+            return dados_leads
+            
+        except Exception as e:
+            self.log("ERROR", "Erro ao obter dados de leads", str(e))
             return []
     
     def _obter_dados_de_execucao_existente(self):
@@ -265,20 +302,36 @@ class ExecutorCampanhaIntegrado:
                     # Renderizar template para este cliente
                     email_renderizado = self._renderizar_template(dados)
                     
-                    # Buscar ClienteConsultado correspondente
+                    # Buscar ClienteConsultado ou Lead correspondente
                     cliente_consultado = None
-                    codigo_cliente = dados.get('codigo_cliente')
-                    if codigo_cliente:
-                        from campanhas.models import ConsultaCliente
-                        try:
-                            consulta_cliente = ConsultaCliente.objects.filter(
-                                execucao=self.campanha.consulta_execucao,
-                                cliente__codigo_cliente=codigo_cliente
-                            ).first()
-                            if consulta_cliente:
-                                cliente_consultado = consulta_cliente.cliente
-                        except:
-                            pass
+                    lead_obj = None
+                    
+                    if self.campanha.tipo_fonte == 'leads':
+                        # Buscar lead pelo email
+                        email = dados.get('email_destinatario')
+                        if email:
+                            try:
+                                lead_obj = Lead.objects.filter(
+                                    base_leads=self.campanha.base_leads,
+                                    email=email,
+                                    valido=True
+                                ).first()
+                            except:
+                                pass
+                    else:
+                        # Buscar cliente (comportamento original)
+                        codigo_cliente = dados.get('codigo_cliente')
+                        if codigo_cliente and self.campanha.consulta_execucao:
+                            from campanhas.models import ConsultaCliente
+                            try:
+                                consulta_cliente = ConsultaCliente.objects.filter(
+                                    execucao=self.campanha.consulta_execucao,
+                                    cliente__codigo_cliente=codigo_cliente
+                                ).first()
+                                if consulta_cliente:
+                                    cliente_consultado = consulta_cliente.cliente
+                            except:
+                                pass
                     
                     # Serializar dados para JSON (converter dates)
                     dados_serializaveis = self._serializar_dados_para_json(dados)
@@ -286,7 +339,8 @@ class ExecutorCampanhaIntegrado:
                     # Criar envio individual
                     EnvioEmailIndividual.objects.create(
                         campanha=self.campanha,
-                        cliente=cliente_consultado,  # Adicionar referência ao cliente
+                        cliente=cliente_consultado,
+                        lead=lead_obj,
                         email_destinatario=dados['email_destinatario'],
                         nome_destinatario=dados['nome_destinatario'],
                         assunto_enviado=email_renderizado['assunto'],

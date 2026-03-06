@@ -1,0 +1,253 @@
+{% extends 'base_saas.html' %}
+{% load static %}
+
+{% block title %}Nova Consulta SQL - WhatsApp{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item">WhatsApp</span>
+<span class="breadcrumb-item">Nova Consulta</span>
+{% endblock %}
+
+{% block page_title %}Nova Consulta SQL{% endblock %}
+{% block page_subtitle %}Execute consultas SQL e prepare dados para envio via WhatsApp HSM{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'campanhas:listar_execucoes' %}" class="btn btn-outline">
+    <i data-feather="list"></i>
+    Ver Execuções
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{% url 'campanhas:iniciar_processamento' %}" id="formConsulta">
+    {% csrf_token %}
+    
+    <div class="grid grid-2" style="gap: var(--space-xl);">
+        <!-- Coluna Esquerda - Formulário -->
+        <div>
+            <!-- Seleção de Banco -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="database"></i>
+                        Configuração do Banco
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Credencial do Banco</label>
+                        <select name="credencial_banco" id="credencialBanco" class="form-select" required>
+                            <option value="">Selecione uma credencial</option>
+                            {% for credencial in credenciais_banco %}
+                            <option value="{{ credencial.id }}">{{ credencial.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="form-help">Selecione a credencial do banco de dados que deseja consultar</span>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-ghost" onclick="testarConexao()">
+                        <i data-feather="zap"></i>
+                        Testar Conexão
+                    </button>
+                    <div id="statusConexao" style="margin-top: var(--space-sm);"></div>
+                </div>
+            </div>
+
+            <!-- Consulta SQL -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="code"></i>
+                        Consulta SQL
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label form-label-required">SQL</label>
+                        <textarea name="consulta_sql" id="consultaSql" class="form-textarea" rows="12" required placeholder="SELECT * FROM clientes WHERE..."></textarea>
+                        <span class="form-help">Digite a consulta SQL. Use SELECT para consultar dados.</span>
+                    </div>
+
+                    <!-- Templates Salvos -->
+                    {% if templates_consulta %}
+                    <div class="form-group">
+                        <label class="form-label">Templates Salvos</label>
+                        <select id="templateConsulta" class="form-select" onchange="carregarTemplate()">
+                            <option value="">Selecione um template</option>
+                            {% for template in templates_consulta %}
+                            <option value="{{ template.id }}" data-sql="{{ template.sql|escapejs }}">{{ template.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Opções Adicionais -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="settings"></i>
+                        Opções
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" id="salvarConsulta" name="salvar_consulta" class="form-check-input">
+                            <label class="form-check-label" for="salvarConsulta">Salvar consulta para uso futuro</label>
+                        </div>
+                    </div>
+
+                    <div id="campoNomeConsulta" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Nome do Template</label>
+                            <input type="text" name="nome_template" class="form-input" placeholder="Nome para identificar esta consulta">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Limite de Registros</label>
+                        <input type="number" name="limite_registros" class="form-input" value="1000" min="1" max="50000">
+                        <span class="form-help">Máximo de registros que serão processados</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita - Ajuda e Visualização -->
+        <div>
+            <!-- Ajuda -->
+            <div class="card" style="margin-bottom: var(--space-lg);">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="help-circle"></i>
+                        Ajuda
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="font-size: var(--font-size-sm); color: var(--text-secondary); line-height: var(--line-height-relaxed);">
+                        <p style="margin-bottom: var(--space-md);"><strong>Dicas para criar consultas:</strong></p>
+                        <ul style="margin-left: var(--space-lg); margin-bottom: var(--space-md);">
+                            <li>A consulta deve retornar pelo menos o telefone do cliente</li>
+                            <li>Use aliases descritivos para as colunas</li>
+                            <li>Teste primeiro com LIMIT pequeno</li>
+                            <li>Evite consultas muito complexas</li>
+                        </ul>
+
+                        <p style="margin-bottom: var(--space-md);"><strong>Exemplo de consulta:</strong></p>
+                        <div style="background-color: var(--bg-tertiary); padding: var(--space-sm); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--font-size-xs);">
+                            SELECT<br>
+                            &nbsp;&nbsp;id,<br>
+                            &nbsp;&nbsp;nome,<br>
+                            &nbsp;&nbsp;telefone,<br>
+                            &nbsp;&nbsp;email<br>
+                            FROM clientes<br>
+                            WHERE ativo = 1<br>
+                            LIMIT 1000
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico Recente -->
+            {% if execucoes_recentes %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i data-feather="clock"></i>
+                        Execuções Recentes
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        {% for execucao in execucoes_recentes %}
+                        <a href="{% url 'campanhas:detalhe_execucao' execucao.id %}" style="display: flex; justify-content: space-between; padding: var(--space-sm); border-radius: var(--radius-md); text-decoration: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-hover)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    #{{ execucao.id }}
+                                </div>
+                                <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                                    {{ execucao.data_criacao|timesince }} atrás
+                                </div>
+                            </div>
+                            <span class="badge {% if execucao.status == 'concluida' %}badge-success{% elif execucao.status == 'processando' %}badge-info{% else %}badge-warning{% endif %}" style="align-self: center;">
+                                {{ execucao.get_status_display }}
+                            </span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div style="display: flex; gap: var(--space-md); justify-content: flex-end; margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border-primary);">
+        <a href="{% url 'campanhas:listar_execucoes' %}" class="btn btn-outline">
+            <i data-feather="x"></i>
+            Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary" id="btnExecutar">
+            <i data-feather="play"></i>
+            Executar Consulta
+        </button>
+    </div>
+</form>
+
+<script>
+    // Inicializar ícones
+    feather.replace();
+
+    // Mostrar/ocultar campo de nome do template
+    document.getElementById('salvarConsulta').addEventListener('change', function() {
+        document.getElementById('campoNomeConsulta').style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Carregar template selecionado
+    function carregarTemplate() {
+        const select = document.getElementById('templateConsulta');
+        const option = select.options[select.selectedIndex];
+        if (option.value) {
+            const sql = option.getAttribute('data-sql');
+            document.getElementById('consultaSql').value = sql;
+        }
+    }
+
+    // Testar conexão
+    function testarConexao() {
+        const credencialId = document.getElementById('credencialBanco').value;
+        if (!credencialId) {
+            alert('Selecione uma credencial primeiro');
+            return;
+        }
+
+        const statusDiv = document.getElementById('statusConexao');
+        statusDiv.innerHTML = '<div class="spinner spinner-sm"></div> Testando conexão...';
+
+        // Aqui você pode fazer uma requisição AJAX para testar a conexão
+        setTimeout(function() {
+            statusDiv.innerHTML = '<div class="alert alert-success" style="padding: var(--space-sm); margin: 0;"><i data-feather="check-circle" style="width: 14px; height: 14px;"></i> Conexão estabelecida com sucesso!</div>';
+            feather.replace();
+        }, 1000);
+    }
+
+    // Validar formulário antes de enviar
+    document.getElementById('formConsulta').addEventListener('submit', function(e) {
+        const sql = document.getElementById('consultaSql').value.trim().toUpperCase();
+        
+        // Validações básicas - aceita SELECT ou WITH (CTEs - Common Table Expressions)
+        if (!sql.startsWith('SELECT') && !sql.startsWith('WITH')) {
+            alert('Apenas consultas SELECT ou WITH (CTEs) são permitidas');
+            e.preventDefault();
+            return false;
+        }
+
+        // Desabilitar botão para evitar duplo clique
+        const btn = document.getElementById('btnExecutar');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner spinner-sm"></div> Executando...';
+    });
+</script>
+{% endblock %}

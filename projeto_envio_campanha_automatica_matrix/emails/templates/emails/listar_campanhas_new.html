@@ -1,0 +1,258 @@
+{% extends 'base_saas.html' %}
+{% load static %}
+
+{% block title %}Campanhas de Email - Sistema{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-item">Emails</span>
+<span class="breadcrumb-item">Campanhas</span>
+{% endblock %}
+
+{% block page_title %}Campanhas de Email{% endblock %}
+{% block page_subtitle %}Gerencie todas as suas campanhas de email automatizadas{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'emails:dashboard' %}" class="btn btn-outline">
+    <i data-feather="bar-chart-2"></i>
+    Dashboard
+</a>
+<a href="{% url 'emails:criar_campanha' %}" class="btn btn-primary">
+    <i data-feather="plus"></i>
+    Nova Campanha
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card" style="margin-bottom: var(--space-lg);">
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="filtroStatus" onchange="filtrarCampanhas()">
+                    <option value="">Todos</option>
+                    <option value="rascunho">Rascunho</option>
+                    <option value="agendada">Agendada</option>
+                    <option value="executando">Executando</option>
+                    <option value="pausada">Pausada</option>
+                    <option value="concluida">Concluída</option>
+                    <option value="cancelada">Cancelada</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Buscar</label>
+                <input type="text" class="form-input" id="buscaCampanha" placeholder="Nome da campanha..." onkeyup="filtrarCampanhas()">
+            </div>
+            <button class="btn btn-ghost" onclick="limparFiltros()">
+                <i data-feather="x"></i>
+                Limpar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Campanhas -->
+{% if campanhas %}
+<div class="grid grid-auto" id="listaCampanhas">
+    {% for campanha in campanhas %}
+    <div class="card campanha-card" data-status="{{ campanha.status }}" data-nome="{{ campanha.nome|lower }}">
+        <div class="card-header">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); flex: 1; min-width: 0;">
+                <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background-color: rgba(234, 67, 53, 0.1); color: var(--color-email); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i data-feather="mail"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ campanha.nome }}
+                    </div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">
+                        Criada em {{ campanha.data_criacao|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+            </div>
+            <span class="badge {% if campanha.status == 'concluida' %}badge-success{% elif campanha.status == 'executando' %}badge-info{% elif campanha.status == 'pausada' %}badge-warning{% elif campanha.status == 'cancelada' %}badge-gray{% elif campanha.status == 'agendada' %}badge-primary{% else %}badge-gray{% endif %}">
+                {{ campanha.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Descrição -->
+            {% if campanha.descricao %}
+            <div style="margin-bottom: var(--space-md); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                {{ campanha.descricao|truncatewords:15 }}
+            </div>
+            {% endif %}
+
+            <!-- Estatísticas -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-md);">
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">Total</div>
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--text-primary);">
+                        {{ campanha.total_destinatarios|default:0 }}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">Enviados</div>
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-success-600);">
+                        {{ campanha.total_enviados|default:0 }}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary);">Taxa</div>
+                    <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--text-primary);">
+                        {% if campanha.total_destinatarios and campanha.total_destinatarios > 0 %}
+                            {% widthratio campanha.total_enviados campanha.total_destinatarios 100 %}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progresso -->
+            {% if campanha.status == 'executando' %}
+            <div class="progress">
+                <div class="progress-bar" style="width: {% if campanha.total_destinatarios and campanha.total_destinatarios > 0 %}{% widthratio campanha.total_enviados campanha.total_destinatarios 100 %}{% else %}0{% endif %}%"></div>
+            </div>
+            {% endif %}
+
+            <!-- Agendamento -->
+            {% if campanha.status == 'agendada' and campanha.proxima_execucao %}
+            <div style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); background-color: var(--color-primary-50); border-radius: var(--radius-md); margin-top: var(--space-md);">
+                <i data-feather="clock" style="width: 16px; height: 16px; color: var(--color-primary-600);"></i>
+                <span style="font-size: var(--font-size-xs); color: var(--color-primary-700);">
+                    Próxima execução: {{ campanha.proxima_execucao|date:"d/m/Y H:i" }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer">
+            <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                <a href="{% url 'emails:detalhe_campanha' campanha.id %}" class="btn btn-sm btn-outline">
+                    <i data-feather="eye"></i>
+                    Detalhes
+                </a>
+                
+                {% if campanha.status == 'rascunho' or campanha.status == 'agendada' %}
+                <a href="{% url 'emails:configurar_campanha' campanha.id %}" class="btn btn-sm btn-ghost">
+                    <i data-feather="edit-2"></i>
+                    Editar
+                </a>
+                {% endif %}
+
+                {% if campanha.status == 'agendada' or campanha.status == 'rascunho' %}
+                <form method="post" action="{% url 'emails:executar_campanha' campanha.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i data-feather="play"></i>
+                        Executar
+                    </button>
+                </form>
+                {% elif campanha.status == 'executando' %}
+                <form method="post" action="{% url 'emails:pausar_campanha' campanha.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-warning">
+                        <i data-feather="pause"></i>
+                        Pausar
+                    </button>
+                </form>
+                {% elif campanha.status == 'pausada' %}
+                <form method="post" action="{% url 'emails:retomar_campanha' campanha.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i data-feather="play"></i>
+                        Retomar
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if campanha.status not in 'concluida,cancelada' %}
+                <form method="post" action="{% url 'emails:cancelar_campanha' campanha.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Deseja realmente cancelar esta campanha?')">
+                        <i data-feather="x-circle"></i>
+                        Cancelar
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Paginação -->
+{% if is_paginated %}
+<div class="pagination" style="margin-top: var(--space-xl);">
+    {% if page_obj.has_previous %}
+    <a href="?page=1" class="pagination-item"><i data-feather="chevrons-left" style="width: 14px; height: 14px;"></i></a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="pagination-item"><i data-feather="chevron-left" style="width: 14px; height: 14px;"></i></a>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <span class="pagination-item active">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a href="?page={{ num }}" class="pagination-item">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="pagination-item"><i data-feather="chevron-right" style="width: 14px; height: 14px;"></i></a>
+    <a href="?page={{ page_obj.paginator.num_pages }}" class="pagination-item"><i data-feather="chevrons-right" style="width: 14px; height: 14px;"></i></a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+    <div class="empty-state-icon">📧</div>
+    <div class="empty-state-title">Nenhuma campanha encontrada</div>
+    <div class="empty-state-description">
+        Comece criando sua primeira campanha de email automatizada
+    </div>
+    <a href="{% url 'emails:criar_campanha' %}" class="btn btn-primary">
+        <i data-feather="plus"></i>
+        Criar Primeira Campanha
+    </a>
+</div>
+{% endif %}
+
+<script>
+    // Inicializar ícones
+    feather.replace();
+
+    // Filtrar campanhas
+    function filtrarCampanhas() {
+        const status = document.getElementById('filtroStatus').value.toLowerCase();
+        const busca = document.getElementById('buscaCampanha').value.toLowerCase();
+        const cards = document.querySelectorAll('.campanha-card');
+
+        cards.forEach(card => {
+            const cardStatus = card.dataset.status.toLowerCase();
+            const cardNome = card.dataset.nome;
+            
+            const statusMatch = !status || cardStatus === status;
+            const buscaMatch = !busca || cardNome.includes(busca);
+
+            card.style.display = (statusMatch && buscaMatch) ? '' : 'none';
+        });
+    }
+
+    // Limpar filtros
+    function limparFiltros() {
+        document.getElementById('filtroStatus').value = '';
+        document.getElementById('buscaCampanha').value = '';
+        filtrarCampanhas();
+    }
+
+    // Auto-refresh para campanhas em execução (a cada 30 segundos)
+    {% if has_executing %}
+    setInterval(function() {
+        window.location.reload();
+    }, 30000);
+    {% endif %}
+</script>
+{% endblock %}

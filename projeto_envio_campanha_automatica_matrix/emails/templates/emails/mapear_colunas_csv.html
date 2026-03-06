@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Mapear Colunas do CSV{% endblock %}
+
+{% block page_title %}🗺️ Mapear Colunas do CSV{% endblock %}
+{% block page_subtitle %}Selecione quais colunas contêm o email e o nome{% endblock %}
+
+{% block content %}
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="columns" style="width: 18px; height: 18px;"></i>
+            Mapeamento de Colunas
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                    Arquivo: <strong>{{ arquivo_nome }}</strong>
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    Total de linhas: <strong>{{ total_linhas }}</strong> | Colunas detectadas: <strong>{{ colunas|length }}</strong>
+                </div>
+            </div>
+            
+            <div class="grid-modern grid-2" style="margin-bottom: var(--space-lg);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Coluna de Email *
+                    </label>
+                    <select name="coluna_email" id="coluna_email" required 
+                            style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        <option value="">Selecione a coluna de email</option>
+                        {% for coluna in colunas %}
+                        <option value="{{ coluna }}">{{ coluna }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Coluna de Nome *
+                    </label>
+                    <select name="coluna_nome" id="coluna_nome" required 
+                            style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                        <option value="">Selecione a coluna de nome</option>
+                        {% for coluna in colunas %}
+                        <option value="{{ coluna }}">{{ coluna }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Preview dos Dados -->
+            <div style="margin-bottom: var(--space-lg);">
+                <h4 style="margin: 0 0 var(--space-md) 0; color: var(--text-primary); font-size: var(--font-size-md);">
+                    <i data-feather="eye" style="width: 16px; height: 16px;"></i>
+                    Preview dos Dados (primeiras 10 linhas)
+                </h4>
+                
+                {% if preview %}
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: var(--bg-secondary); border-radius: var(--radius-md); overflow: hidden;">
+                        <thead>
+                            <tr style="background: var(--bg-primary);">
+                                {% for coluna in colunas %}
+                                <th style="padding: var(--space-sm); text-align: left; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-primary); border-bottom: 2px solid var(--border-primary);">
+                                    {{ coluna }}
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for linha in preview %}
+                            <tr style="border-bottom: 1px solid var(--border-secondary);">
+                                {% for coluna in colunas %}
+                                <td style="padding: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                                    {% for key, value in linha.items %}
+                                        {% if key == coluna %}
+                                            {{ value|default:"-"|truncatewords:10 }}
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="padding: var(--space-lg); text-align: center; color: var(--text-tertiary); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    Nenhum dado para preview
+                </div>
+                {% endif %}
+            </div>
+            
+            <div style="padding: var(--space-md); background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <strong>💡 Dica:</strong> Todas as colunas do CSV (exceto email e nome) estarão disponíveis como variáveis nos templates de email. 
+                    Por exemplo, se você tiver uma coluna "Telefone", poderá usar <code>{{ "{{Telefone}}" }}</code> no template.
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: var(--space-md); justify-content: flex-end;">
+                <a href="{% url 'emails:importar_leads' %}" class="btn-modern btn-modern-outline">
+                    <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+                    Voltar
+                </a>
+                <button type="submit" class="btn-modern btn-modern-primary">
+                    <i data-feather="check" style="width: 14px; height: 14px;"></i>
+                    Importar Leads
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Auto-detect email and name columns
+    document.addEventListener('DOMContentLoaded', function() {
+        const emailSelect = document.getElementById('coluna_email');
+        const nomeSelect = document.getElementById('coluna_nome');
+        
+        // Try to auto-detect email column
+        for (let option of emailSelect.options) {
+            const value = option.value.toLowerCase();
+            if (value.includes('email') || value.includes('e-mail') || value === 'email') {
+                emailSelect.value = option.value;
+                break;
+            }
+        }
+        
+        // Try to auto-detect name column
+        for (let option of nomeSelect.options) {
+            const value = option.value.toLowerCase();
+            if (value.includes('nome') || value.includes('name') || value.includes('cliente')) {
+                nomeSelect.value = option.value;
+                break;
+            }
+        }
+    });
+</script>
+{% endblock %}

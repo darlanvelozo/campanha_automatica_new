@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}Importar Leads - Emails{% endblock %}
+
+{% block page_title %}📁 Importar Leads via CSV{% endblock %}
+{% block page_subtitle %}Importe uma base de leads para envio de campanhas de email{% endblock %}
+
+{% block content %}
+
+{% if etapa == 1 %}
+<!-- ETAPA 1: UPLOAD DO ARQUIVO -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="upload" style="width: 18px; height: 18px;"></i>
+            Passo 1: Enviar Arquivo CSV
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <form method="post" enctype="multipart/form-data" id="form-upload">
+            {% csrf_token %}
+            <input type="hidden" name="etapa" value="1">
+            
+            <!-- Instruções -->
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: rgba(13, 110, 253, 0.1); border-left: 4px solid var(--accent-primary); border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-sm) 0; color: var(--accent-primary);">
+                    <i data-feather="info" style="width: 16px; height: 16px;"></i>
+                    Formato Esperado do CSV
+                </h4>
+                <ul style="margin: 0; padding-left: var(--space-lg); color: var(--text-secondary);">
+                    <li>Arquivo deve ter cabeçalho com nomes das colunas</li>
+                    <li>Deve conter pelo menos uma coluna com <strong>Email</strong></li>
+                    <li>Deve conter pelo menos uma coluna com <strong>Nome</strong></li>
+                    <li>Delimitadores aceitos: <code>;</code> <code>,</code> ou <code>tab</code></li>
+                    <li>Encodings aceitos: UTF-8, Latin-1, ISO-8859-1</li>
+                    <li>Colunas extras serão automaticamente disponibilizadas como variáveis no template</li>
+                </ul>
+            </div>
+            
+            <!-- Exemplo -->
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-sm) 0; color: var(--text-primary);">
+                    <i data-feather="file-text" style="width: 16px; height: 16px;"></i>
+                    Exemplo de CSV
+                </h4>
+                <pre style="background: var(--bg-primary); padding: var(--space-md); border-radius: var(--radius-sm); overflow-x: auto; font-size: var(--font-size-xs); color: var(--text-secondary);">Nome;Email;Telefone;Local
+Francisco Alves;francisco@email.com;5586999885013;PREFEITURA
+Matheus Ferreira;matheus@email.com;5589994643749;Empresa XYZ
+Davi Santana;davi@email.com;5586950584955;Comércio Local</pre>
+            </div>
+            
+            <!-- Upload -->
+            <div>
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-sm);">
+                    Selecione o arquivo CSV *
+                </label>
+                <input type="file" 
+                       name="arquivo_csv" 
+                       accept=".csv" 
+                       required
+                       style="width: 100%; padding: var(--space-md); background: var(--bg-secondary); border: 2px dashed var(--border-primary); border-radius: var(--radius-md); cursor: pointer;">
+                <small style="color: var(--text-secondary);">Tamanho máximo: 10MB</small>
+            </div>
+            
+            <!-- Ações -->
+            <div style="margin-top: var(--space-xl); text-align: right;">
+                <a href="{% url 'emails:listar_bases_leads' %}" class="btn-modern btn-modern-outline" style="margin-right: var(--space-md);">
+                    <i data-feather="x" style="width: 14px; height: 14px;"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-modern btn-modern-primary">
+                    <i data-feather="arrow-right" style="width: 14px; height: 14px;"></i>
+                    Analisar Arquivo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% elif etapa == 2 %}
+<!-- ETAPA 2: MAPEAMENTO DE COLUNAS -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="map" style="width: 18px; height: 18px;"></i>
+            Passo 2: Mapear Colunas
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <form method="post" id="form-mapear">
+            {% csrf_token %}
+            <input type="hidden" name="etapa" value="2">
+            
+            <!-- Informações do Arquivo -->
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: rgba(40, 167, 69, 0.1); border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-sm) 0; color: var(--accent-success);">
+                    📄 Arquivo: {{ arquivo_nome }}
+                </h4>
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    <strong>Colunas detectadas:</strong> {{ colunas|length }} | 
+                    <strong>Encoding:</strong> {{ encoding }} | 
+                    <strong>Delimitador:</strong> {% if delimitador == ';' %}ponto-vírgula (;){% elif delimitador == ',' %}vírgula (,){% elif delimitador == '\t' %}tab{% else %}{{ delimitador }}{% endif %}
+                </div>
+            </div>
+            
+            <!-- Configurações da Base -->
+            <div class="grid-modern grid-2" style="margin-bottom: var(--space-lg);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Nome da Base de Leads *
+                    </label>
+                    <input type="text" name="nome_base" required 
+                           placeholder="Ex: Leads Campanha Janeiro 2026"
+                           style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                        Descrição
+                    </label>
+                    <input type="text" name="descricao" 
+                           placeholder="Descrição opcional da base..."
+                           style="width: 100%; padding: var(--space-sm); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                </div>
+            </div>
+            
+            <!-- Mapeamento de Colunas -->
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-md) 0; color: var(--text-primary);">
+                    🎯 Mapeamento de Colunas Obrigatórias
+                </h4>
+                
+                <div class="grid-modern grid-2">
+                    <div>
+                        <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                            Coluna de Email *
+                        </label>
+                        <select name="coluna_email" required 
+                                style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                            <option value="">Selecione a coluna...</option>
+                            {% for coluna in colunas %}
+                            <option value="{{ coluna }}" {% if coluna == sugestao_email %}selected{% endif %}>
+                                {{ coluna }}{% if coluna == sugestao_email %} (sugerido){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); margin-bottom: var(--space-xs);">
+                            Coluna de Nome *
+                        </label>
+                        <select name="coluna_nome" required 
+                                style="width: 100%; padding: var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                            <option value="">Selecione a coluna...</option>
+                            {% for coluna in colunas %}
+                            <option value="{{ coluna }}" {% if coluna == sugestao_nome %}selected{% endif %}>
+                                {{ coluna }}{% if coluna == sugestao_nome %} (sugerido){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Preview dos Dados -->
+            <div style="margin-bottom: var(--space-lg);">
+                <h4 style="margin: 0 0 var(--space-md) 0; color: var(--text-primary);">
+                    <i data-feather="eye" style="width: 16px; height: 16px;"></i>
+                    Preview dos Dados (primeiras 5 linhas)
+                </h4>
+                
+                <div style="overflow-x: auto; border: 1px solid var(--border-primary); border-radius: var(--radius-md);">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: var(--bg-secondary);">
+                            <tr>
+                                {% for coluna in colunas %}
+                                <th style="padding: var(--space-sm); text-align: left; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                                    {{ coluna }}
+                                    {% if coluna == sugestao_email %}
+                                        <span style="color: var(--accent-primary);">📧</span>
+                                    {% elif coluna == sugestao_nome %}
+                                        <span style="color: var(--accent-success);">👤</span>
+                                    {% endif %}
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for linha in preview %}
+                            <tr style="border-bottom: 1px solid var(--border-primary);">
+                                {% for coluna in colunas %}
+                                <td style="padding: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-primary);">
+                                    {{ linha|get_item:coluna|default:"-" }}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{{ colunas|length }}" style="padding: var(--space-lg); text-align: center; color: var(--text-secondary);">
+                                    Nenhum dado disponível para preview
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Variáveis Disponíveis -->
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: rgba(255, 193, 7, 0.1); border-radius: var(--radius-md); border-left: 4px solid var(--accent-warning);">
+                <h4 style="margin: 0 0 var(--space-sm) 0; color: var(--accent-warning);">
+                    <i data-feather="code" style="width: 16px; height: 16px;"></i>
+                    Variáveis que estarão disponíveis no template de email
+                </h4>
+                <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: var(--space-sm);">
+                    {% for coluna in colunas %}
+                    <span style="padding: var(--space-xs) var(--space-sm); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-sm); font-family: monospace; font-size: var(--font-size-xs); color: var(--accent-warning);">
+                        &#123;&#123;{{ coluna }}&#125;&#125;
+                    </span>
+                    {% endfor %}
+                </div>
+                <small style="color: var(--text-secondary); display: block; margin-top: var(--space-sm);">
+                    Estas variáveis poderão ser usadas no template de email
+                </small>
+            </div>
+            
+            <!-- Ações -->
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="{% url 'emails:importar_leads' %}" class="btn-modern btn-modern-outline">
+                    <i data-feather="arrow-left" style="width: 14px; height: 14px;"></i>
+                    Voltar
+                </a>
+                <button type="submit" class="btn-modern btn-modern-success">
+                    <i data-feather="check" style="width: 14px; height: 14px;"></i>
+                    Importar Leads
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% else %}
+<!-- ETAPA 1: Formulário de Upload -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="upload-cloud" style="width: 18px; height: 18px;"></i>
+            Upload de Arquivo CSV
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="etapa" value="1">
+            
+            <div style="text-align: center; padding: var(--space-xl);">
+                <div style="margin-bottom: var(--space-lg);">
+                    <i data-feather="file-text" style="width: 64px; height: 64px; color: var(--accent-primary); stroke-width: 1.5;"></i>
+                </div>
+                
+                <input type="file" 
+                       name="arquivo_csv" 
+                       id="arquivo_csv"
+                       accept=".csv" 
+                       required
+                       style="display: none;">
+                
+                <label for="arquivo_csv" class="btn-modern btn-modern-primary btn-modern-lg" style="cursor: pointer;">
+                    <i data-feather="upload" style="width: 18px; height: 18px;"></i>
+                    Escolher Arquivo CSV
+                </label>
+                
+                <div id="arquivo-selecionado" style="margin-top: var(--space-md); color: var(--text-secondary); font-size: var(--font-size-sm);"></div>
+            </div>
+            
+            <div style="margin-top: var(--space-lg); text-align: right;">
+                <a href="{% url 'emails:listar_bases_leads' %}" class="btn-modern btn-modern-outline" style="margin-right: var(--space-md);">
+                    <i data-feather="x" style="width: 14px; height: 14px;"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-modern btn-modern-primary" id="btn-analisar" disabled>
+                    <i data-feather="search" style="width: 14px; height: 14px;"></i>
+                    Analisar e Continuar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputArquivo = document.getElementById('arquivo_csv');
+    const arquivoSelecionado = document.getElementById('arquivo-selecionado');
+    const btnAnalisar = document.getElementById('btn-analisar');
+    
+    if (inputArquivo) {
+        inputArquivo.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const arquivo = this.files[0];
+                const tamanhoMB = (arquivo.size / 1024 / 1024).toFixed(2);
+                
+                arquivoSelecionado.innerHTML = `
+                    <div style="padding: var(--space-md); background: var(--bg-secondary); border-radius: var(--radius-md); display: inline-block;">
+                        <i data-feather="file" style="width: 16px; height: 16px; color: var(--accent-success);"></i>
+                        <strong>${arquivo.name}</strong>
+                        <span style="color: var(--text-secondary);">(${tamanhoMB} MB)</span>
+                    </div>
+                `;
+                
+                // Recarregar ícones do Feather
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+                
+                // Habilitar botão
+                btnAnalisar.disabled = false;
+            }
+        });
+    }
+});
+</script>
+
+<!-- Template filter personalizado -->
+{% load custom_filters %}
+{% endblock %}

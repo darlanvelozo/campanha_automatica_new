@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Base de Leads{% endblock %}
+
+{% block page_title %}🗑️ Excluir Base de Leads{% endblock %}
+{% block page_subtitle %}Confirme a exclusão da base de leads{% endblock %}
+
+{% block content %}
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="alert-triangle" style="width: 18px; height: 18px;"></i>
+            Confirmar Exclusão
+        </div>
+    </div>
+    <div class="modern-card-body">
+        <div style="padding: var(--space-lg); background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
+            <h4 style="margin: 0 0 var(--space-sm) 0; color: var(--accent-danger);">
+                Atenção!
+            </h4>
+            <p style="margin: 0; color: var(--text-secondary); font-size: var(--font-size-sm);">
+                Esta ação não pode ser desfeita. Todos os leads desta base serão excluídos permanentemente.
+            </p>
+        </div>
+        
+        <div style="margin-bottom: var(--space-lg);">
+            <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Base de Leads</div>
+            <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium); color: var(--text-primary);">
+                {{ base.nome }}
+            </div>
+        </div>
+        
+        <div class="grid-modern grid-3" style="margin-bottom: var(--space-lg);">
+            <div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Total de Leads</div>
+                <div style="font-size: var(--font-size-md); font-weight: var(--font-weight-bold); color: var(--text-primary);">
+                    {{ base.total_leads }}
+                </div>
+            </div>
+            <div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Leads Válidos</div>
+                <div style="font-size: var(--font-size-md); font-weight: var(--font-weight-bold); color: var(--accent-success);">
+                    {{ base.total_validos }}
+                </div>
+            </div>
+            <div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: var(--space-xs);">Data Importação</div>
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">
+                    {{ base.data_importacao|date:"d/m/Y H:i" }}
+                </div>
+            </div>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div style="display: flex; gap: var(--space-md); justify-content: flex-end;">
+                <a href="{% url 'emails:detalhe_base_leads' base.id %}" class="btn-modern btn-modern-outline">
+                    <i data-feather="x" style="width: 14px; height: 14px;"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-modern btn-modern-danger">
+                    <i data-feather="trash-2" style="width: 14px; height: 14px;"></i>
+                    Confirmar Exclusão
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+</script>
+{% endblock %}

@@ -45,4 +45,11 @@ urlpatterns = [
     # APIs para consultar templates de email
     path('api/templates/', views.api_listar_templates_email, name='api_listar_templates_email'),
     path('api/templates/<int:template_id>/', views.api_detalhe_template_email, name='api_detalhe_template_email'),
+    
+    # Leads via CSV
+    path('leads/', views.listar_bases_leads, name='listar_bases_leads'),
+    path('leads/importar/', views.importar_leads_csv, name='importar_leads'),
+    path('leads/<int:base_id>/', views.detalhe_base_leads, name='detalhe_base_leads'),
+    path('leads/<int:base_id>/excluir/', views.excluir_base_leads, name='excluir_base_leads'),
+    path('leads/<int:base_id>/exportar/', views.exportar_base_leads, name='exportar_base_leads'),
 ]

@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Bases de Leads - Emails{% endblock %}
+
+{% block page_title %}📁 Bases de Leads{% endblock %}
+{% block page_subtitle %}Gerencie suas bases de leads importadas{% endblock %}
+
+{% block content %}
+
+<!-- Estatísticas -->
+<div class="grid-modern grid-3 fade-in" style="margin-bottom: var(--space-xl);">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--accent-primary);">
+            <i data-feather="database"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_bases }}</div>
+            <div class="stat-label">Total de Bases</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--accent-success);">
+            <i data-feather="check-circle"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.bases_ativas }}</div>
+            <div class="stat-label">Bases Ativas</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--accent-info);">
+            <i data-feather="users"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_leads }}</div>
+            <div class="stat-label">Total de Leads</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Ações -->
+<div class="modern-card fade-in" style="margin-bottom: var(--space-lg);">
+    <div class="modern-card-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md);">
+            <!-- Busca -->
+            <form method="get" style="flex: 1; min-width: 300px;">
+                <div style="position: relative;">
+                    <i data-feather="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-secondary);"></i>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search }}"
+                           placeholder="Buscar por nome, descrição ou arquivo..."
+                           style="width: 100%; padding: var(--space-sm) var(--space-sm) var(--space-sm) 40px; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary);">
+                </div>
+            </form>
+            
+            <!-- Botão Nova Importação -->
+            <a href="{% url 'emails:importar_leads' %}" class="btn-modern btn-modern-success">
+                <i data-feather="upload" style="width: 14px; height: 14px;"></i>
+                Importar Nova Base
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Bases -->
+<div class="modern-card fade-in">
+    <div class="modern-card-header">
+        <div class="modern-card-title">
+            <i data-feather="list" style="width: 18px; height: 18px;"></i>
+            Bases de Leads ({{ page_obj.paginator.count }})
+        </div>
+    </div>
+    <div class="modern-card-body" style="padding: 0;">
+        {% if page_obj %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: var(--bg-secondary);">
+                    <tr>
+                        <th style="padding: var(--space-md); text-align: left; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Nome</th>
+                        <th style="padding: var(--space-md); text-align: left; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Arquivo</th>
+                        <th style="padding: var(--space-md); text-align: center; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Leads Válidos</th>
+                        <th style="padding: var(--space-md); text-align: center; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Taxa</th>
+                        <th style="padding: var(--space-md); text-align: center; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Data Importação</th>
+                        <th style="padding: var(--space-md); text-align: center; border-bottom: 1px solid var(--border-primary); font-size: var(--font-size-sm); color: var(--text-secondary);">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for base in page_obj %}
+                    <tr style="border-bottom: 1px solid var(--border-primary);">
+                        <td style="padding: var(--space-md);">
+                            <a href="{% url 'emails:detalhe_base_leads' base.id %}" style="color: var(--accent-primary); text-decoration: none; font-weight: var(--font-weight-medium);">
+                                {{ base.nome }}
+                            </a>
+                            {% if base.descricao %}
+                            <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: var(--space-xs);">
+                                {{ base.descricao|truncatewords:10 }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td style="padding: var(--space-md); color: var(--text-secondary); font-size: var(--font-size-sm);">
+                            <i data-feather="file" style="width: 14px; height: 14px;"></i>
+                            {{ base.arquivo_original_nome }}
+                        </td>
+                        <td style="padding: var(--space-md); text-align: center;">
+                            <span class="badge badge-success">{{ base.total_validos }}</span>
+                            {% if base.total_invalidos > 0 %}
+                            / <span class="badge badge-danger">{{ base.total_invalidos }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: var(--space-md); text-align: center;">
+                            <div class="progress-bar" style="width: 100px; margin: 0 auto;">
+                                <div class="progress-fill" style="width: {{ base.get_taxa_validos }}%; background: var(--accent-success);"></div>
+                            </div>
+                            <small style="color: var(--text-secondary);">{{ base.get_taxa_validos }}%</small>
+                        </td>
+                        <td style="padding: var(--space-md); text-align: center; color: var(--text-secondary); font-size: var(--font-size-sm);">
+                            {{ base.data_importacao|date:"d/m/Y H:i" }}
+                        </td>
+                        <td style="padding: var(--space-md); text-align: center;">
+                            <div style="display: flex; gap: var(--space-xs); justify-content: center;">
+                                <a href="{% url 'emails:detalhe_base_leads' base.id %}" 
+                                   class="btn-icon" 
+                                   title="Ver detalhes">
+                                    <i data-feather="eye" style="width: 16px; height: 16px;"></i>
+                                </a>
+                                <a href="{% url 'emails:exportar_base_leads' base.id %}" 
+                                   class="btn-icon" 
+                                   title="Exportar CSV">
+                                    <i data-feather="download" style="width: 16px; height: 16px;"></i>
+                                </a>
+                                <button onclick="excluirBase({{ base.id }}, '{{ base.nome }}')" 
+                                        class="btn-icon btn-icon-danger" 
+                                        title="Excluir">
+                                    <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="padding: var(--space-xl); text-align: center; color: var(--text-secondary);">
+                            <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: var(--space-md); opacity: 0.5;"></i>
+                            <div>Nenhuma base de leads encontrada</div>
+                            <a href="{% url 'emails:importar_leads' %}" class="btn-modern btn-modern-primary" style="margin-top: var(--space-md);">
+                                <i data-feather="upload" style="width: 14px; height: 14px;"></i>
+                                Importar Primeira Base
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <div style="padding: var(--space-md); border-top: 1px solid var(--border-primary); display: flex; justify-content: center; gap: var(--space-sm);">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Primeira</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Anterior</a>
+            {% endif %}
+            
+            <span style="padding: var(--space-sm); color: var(--text-secondary);">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Próxima</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}" class="btn-modern btn-modern-sm">Última</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div style="padding: var(--space-xl); text-align: center; color: var(--text-secondary);">
+            Nenhuma base encontrada
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function excluirBase(baseId, baseNome) {
+    if (!confirm(`Tem certeza que deseja excluir a base "${baseNome}"?\n\nTodos os leads serão removidos permanentemente.`)) {
+        return;
+    }
+    
+    fetch(`/emails/leads/${baseId}/excluir/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao excluir base');
+    });
+}
+</script>
+{% endblock %}

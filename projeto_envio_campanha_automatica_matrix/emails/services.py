@@ -9,7 +9,7 @@ from django.db import transaction
 from campanhas.models import ClienteConsultado
 from .models import (
     CampanhaEmail, EnvioEmailIndividual, LogEnvioEmail,
-    ConfiguracaoServidorEmail, TemplateEmail
+    ConfiguracaoServidorEmail, TemplateEmail, Lead
 )
 import logging
 
@@ -186,15 +186,33 @@ class GerenciadorCampanhaEmail:
     
     def preparar_dados_clientes(self):
         """
-        Prepara os dados dos clientes para envio baseado na configuração da campanha
+        Prepara os dados dos clientes ou leads para envio baseado na configuração da campanha
         
         Returns:
-            list: lista de dados dos clientes
+            list: lista de dados dos clientes ou leads
         """
         clientes_dados = []
         
         try:
-            if self.campanha.consulta_execucao:
+            # Verificar tipo de fonte
+            if self.campanha.tipo_fonte == 'leads':
+                # Usar dados de leads (CSV)
+                if not self.campanha.base_leads:
+                    logger.error(f"Campanha {self.campanha.nome} configurada para leads mas sem base_leads")
+                    return []
+                
+                leads = Lead.objects.filter(
+                    base_leads=self.campanha.base_leads,
+                    valido=True
+                )
+                
+                for lead in leads:
+                    dados = lead.get_dados_completos()
+                    clientes_dados.append(dados)
+                
+                logger.info(f"Preparados dados de {len(clientes_dados)} leads para envio")
+            
+            elif self.campanha.consulta_execucao:
                 # Usar dados de uma execução específica
                 from campanhas.models import ConsultaCliente
                 consultas_clientes = ConsultaCliente.objects.filter(execucao=self.campanha.consulta_execucao)
@@ -295,22 +313,43 @@ class GerenciadorCampanhaEmail:
         try:
             with transaction.atomic():
                 for dados in dados_clientes:
-                    # Verificar se já existe envio para este cliente
-                    cliente_obj = None
-                    if 'codigo_cliente' in dados:
-                        try:
-                            cliente_obj = ClienteConsultado.objects.get(
-                                codigo_cliente=dados['codigo_cliente']
-                            )
-                        except ClienteConsultado.DoesNotExist:
-                            logger.warning(f"Cliente {dados['codigo_cliente']} não encontrado")
-                            continue
-                    
                     email = dados.get('email_destinatario')
                     nome = dados.get('nome_destinatario', 'Cliente')
                     
-                    if not email or not cliente_obj:
+                    if not email:
                         continue
+                    
+                    # Buscar cliente ou lead
+                    cliente_obj = None
+                    lead_obj = None
+                    
+                    if self.campanha.tipo_fonte == 'leads':
+                        # Buscar lead
+                        try:
+                            lead_obj = Lead.objects.filter(
+                                base_leads=self.campanha.base_leads,
+                                email=email,
+                                valido=True
+                            ).first()
+                        except Exception as e:
+                            logger.warning(f"Erro ao buscar lead {email}: {e}")
+                            continue
+                        
+                        if not lead_obj:
+                            continue
+                    else:
+                        # Buscar cliente (comportamento original)
+                        if 'codigo_cliente' in dados:
+                            try:
+                                cliente_obj = ClienteConsultado.objects.get(
+                                    codigo_cliente=dados['codigo_cliente']
+                                )
+                            except ClienteConsultado.DoesNotExist:
+                                logger.warning(f"Cliente {dados['codigo_cliente']} não encontrado")
+                                continue
+                        
+                        if not cliente_obj:
+                            continue
                     
                     # Renderizar template
                     template_renderizado = self.campanha.template_email.renderizar_template(dados)
@@ -319,6 +358,7 @@ class GerenciadorCampanhaEmail:
                     envio, criado = EnvioEmailIndividual.objects.get_or_create(
                         campanha=self.campanha,
                         cliente=cliente_obj,
+                        lead=lead_obj,
                         email_destinatario=email,
                         defaults={
                             'nome_destinatario': nome,

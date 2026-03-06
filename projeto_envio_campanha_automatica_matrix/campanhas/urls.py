@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'campanhas'
+
 urlpatterns = [
     path('processar-consulta/', views.pagina_processar_consulta, name='pagina_processar_consulta'),
     path('template/<int:template_id>/variaveis/', views.obter_variaveis_template, name='obter_variaveis_template'),
@@ -23,6 +25,8 @@ urlpatterns = [
 
     path('envios-hsm/', views.listar_envios_hsm, name='listar_envios_hsm'),
     path('envio-hsm/<int:envio_id>/', views.detalhe_envio_hsm, name='detalhe_envio_hsm'),
+    # Alias para evitar confusão (plural também funciona)
+    path('envios-hsm/<int:envio_id>/', views.detalhe_envio_hsm, name='detalhe_envio_hsm_alias'),
     path('envio-hsm/<int:envio_id>/status/', views.status_envio_hsm_ajax, name='status_envio_hsm_ajax'),
     path('envio-hsm/<int:envio_id>/cancelar/', views.cancelar_envio_hsm, name='cancelar_envio_hsm'),
     path('reiniciar-envio-hsm/', views.reiniciar_envio_hsm, name='reiniciar_envio_hsm'),
